@@ -3,71 +3,136 @@ from Src.Core.exceptions import argument_exception
 from Src.Models.range_model import range_model
 
 
-# Успешное создание базовой единицы
+# 1. Успешное создание базовой единицы
 def test_range_model_init_base_unit_success():
-  unit = range_model("грамм", 1.0)
-  assert unit.name == "грамм"
-  assert unit.conversion_factor == 1.0
-  assert unit.base_range is None
-  assert unit.id != ""
+    # Подготовка
+    name = "грамм"
+    factor = 1.0
+
+    # Действие
+    unit = range_model(name, factor)
+
+    # Проверка
+    assert unit.name == "грамм"
+    assert unit.conversion_factor == 1.0
+    assert unit.base_range is None
+    assert unit.id != ""
 
 
-# Успешное создание производной единицы с коэффициентом
+# 2. Успешное создание производной единицы с коэффициентом
 def test_range_model_init_derived_unit_success():
-  base = range_model("грамм", 1.0)
-  kg = range_model("кг", 1000.0, base)
-  assert kg.name == "кг"
-  assert kg.conversion_factor == 1000.0
-  assert kg.base_range == base
+    # Подготовка
+    base = range_model("грамм", 1.0)
+
+    # Действие
+    kg = range_model("кг", 1000.0, base)
+
+    # Проверка
+    assert kg.name == "кг"
+    assert kg.conversion_factor == 1000.0
+    assert kg.base_range == base
 
 
-# Точный пересчет в базовую единицу
+# 3. Точный пересчет в базовую единицу
 def test_range_model_to_base_calculation():
-  base = range_model("грамм", 1.0)
-  kg = range_model("кг", 1000.0, base)
-  assert kg.to_base(2.5) == 2500.0
-  assert kg.to_base(0.1) == pytest.approx(100.0)
+    # Подготовка
+    base = range_model("грамм", 1.0)
+    kg = range_model("кг", 1000.0, base)
+
+    # Действие
+    result_1 = kg.to_base(2.5)
+    result_2 = kg.to_base(0.1)
+
+    # Проверка
+    assert result_1 == 2500.0
+    assert result_2 == pytest.approx(100.0)
 
 
-# Пересчет базовой единицы самой в себя
+# 4. Пересчет базовой единицы самой в себя
 def test_range_model_to_base_self():
-  base = range_model("грамм", 1.0)
-  assert base.to_base(500) == 500.0
+    # Подготовка
+    base = range_model("грамм", 1.0)
+
+    # Действие
+    result = base.to_base(500)
+
+    # Проверка
+    assert result == 500.0
 
 
-# Сеттер коэффициента: смена значения на корректное
+# 5. Сеттер коэффициента: смена значения на корректное
 def test_range_model_conversion_factor_setter_success():
-  unit = range_model("шт", 1.0)
-  unit.conversion_factor = 12.0
-  assert unit.conversion_factor == 12.0
+    # Подготовка
+    unit = range_model("шт", 1.0)
+    new_factor = 12.0
+
+    # Действие
+    unit.conversion_factor = new_factor
+
+    # Проверка
+    assert unit.conversion_factor == 12.0
 
 
-# Ошибка: коэффициент равен нулю
+# 6. Ошибка: коэффициент равен нулю
 def test_range_model_zero_factor_raises_exception():
-  with pytest.raises(argument_exception):
-    range_model("кг", 0.0)
+    # Подготовка
+    zero_factor = 0.0
+
+    # Действие и проверка
+    with pytest.raises(argument_exception):
+        range_model("кг", zero_factor)
 
 
-# Ошибка: отрицательный коэффициент
+# 7. Ошибка: отрицательный коэффициент
 def test_range_model_negative_factor_raises_exception():
-  with pytest.raises(argument_exception):
-    range_model("кг", -5.0)
+    # Подготовка
+    negative_factor = -5.0
+
+    # Действие и проверка
+    with pytest.raises(argument_exception):
+        range_model("кг", negative_factor)
 
 
-# Ошибка: коэффициент не число
+# 8. Ошибка: коэффициент не число
 def test_range_model_string_factor_raises_exception():
-  with pytest.raises(argument_exception):
-    range_model("кг", "тысяча")
+    # Подготовка
+    string_factor = "тысяча"
+
+    # Действие и проверка
+    with pytest.raises(argument_exception):
+        range_model("кг", string_factor)
 
 
-# Ошибка: базовая единица не является range_model
+# 9. Ошибка: базовая единица не является range_model
 def test_range_model_invalid_base_range_type_raises_exception():
-  with pytest.raises(argument_exception):
-    range_model("кг", 1000.0, base_range="не объект")
+    # Подготовка
+    invalid_base = "не объект"
+
+    # Действие и проверка
+    with pytest.raises(argument_exception):
+        range_model("кг", 1000.0, base_range=invalid_base)
 
 
-# Ошибка: пересчет нечислового количества
+# 10. Ошибка: пересчет нечислового количества
 def test_range_model_to_base_invalid_amount_raises_exception():
-  unit = range_model("кг", 1000.0)
-  with pytest.raises(argument_exception):
-    unit.to_base("два килограмма")
+    # Подготовка
+    unit = range_model("кг", 1000.0)
+    invalid_amount = "два килограмма"
+
+    # Действие и проверка
+    with pytest.raises(argument_exception):
+        unit.to_base(invalid_amount)
+
+
+# 11. Многоуровневый пересчет через цепочку базовых единиц
+def test_range_model_to_base_multilevel_calculation():
+    # Подготовка
+    base = range_model("грамм", 1.0)
+    kg = range_model("кг", 1000.0, base)
+    tonne = range_model("тонна", 1000.0, kg)
+
+    # Действие
+    result = tonne.to_base(2.5)
+
+    # Проверка
+    assert result == 2_500_000.0

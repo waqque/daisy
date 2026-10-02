@@ -1,72 +1,106 @@
-import os
-import time
 import pytest
 from Src.Core.exceptions import argument_exception
 from Src.Logics.settings_manager import settings_manager
 
 
-# Проверка успешной загрузки настроек по умолчанию без исключений
+# 1. Проверка успешной загрузки настроек по умолчанию из конфигурационного файла
 def test_settings_manager_load_success():
+    # Подготовка
     manager = settings_manager()
+
+    # Действие
     result = manager.load()
+
+    # Проверка
     assert result is True
 
 
-# Проверка, что после загрузки объект настроек не пустой
+# 2. Проверка создания и корректности свойств объекта организации после загрузки
 def test_settings_manager_load_not_empty():
+    # Подготовка
     manager = settings_manager()
+
+    # Действие
     manager.load()
+
+    # Проверка
     assert manager.settings is not None
+    assert manager.settings.organization is not None
     assert manager.settings.name == "ООО Ромашка"
+    assert manager.settings.organization.name == "ООО Ромашка"
 
 
-# Проверка работы шаблона Singleton: разные вызовы возвращают один и тот же объект
-def test_settings_manager_singleton_equals():
+# 3. Проверка работы паттерна Singleton: повторные вызовы возвращают один и тот же объект
+def test_settings_manager_singleton_same_instance():
+    # Подготовка и Действие
     instance1 = settings_manager()
-    time.sleep(0.01)
     instance2 = settings_manager()
-    assert instance1 == instance2
+
+    # Проверка
     assert instance1 is instance2
 
 
-# Проверка равенства свойств настроек между экземплярами Singleton
+# 4. Проверка идентичности объекта настроек в двух ссылках на Singleton
 def test_settings_manager_singleton_properties_equals():
+    # Подготовка
     instance1 = settings_manager()
     instance2 = settings_manager()
+
+    # Действие
     instance1.load()
-    assert instance1.settings == instance2.settings
+
+    # Проверка
+    assert instance1.settings is instance2.settings
 
 
-# Проверка флага успешной загрузки настроек
+# 5. Проверка выставления флага успешной загрузки настроек
 def test_settings_manager_is_loaded_true():
+    # Подготовка
     manager = settings_manager()
+
+    # Действие
     manager.load()
+
+    # Проверка
     assert manager.is_loaded is True
 
 
-# Проверка ошибки при загрузке несуществующего файла
+# 6. Проверка ошибки при попытке загрузить несуществующий файл настроек
 def test_settings_manager_load_file_not_found_raises_exception():
+    # Подготовка
     manager = settings_manager()
+    non_existent_file = "non_existent_file_path_12345.json"
+
+    # Действие и проверка
     with pytest.raises(argument_exception):
-        manager.load("non_existent_file_path_12345.json")
+        manager.load(non_existent_file)
 
 
-# Проверка ошибки валидации при передаче нестрокового имени файла
+# 7. Проверка ошибки валидации при передаче нестрокового имени файла
 def test_settings_manager_load_invalid_filename_type_raises_exception():
+    # Подготовка
     manager = settings_manager()
+    invalid_filename = 123
+
+    # Действие и проверка
     with pytest.raises(argument_exception):
-        manager.load(123)
+        manager.load(invalid_filename)
 
 
-# Проверка ошибки валидации при передаче пустого имени файла
+# 8. Проверка ошибки валидации при передаче пустого имени файла
 def test_settings_manager_load_empty_filename_raises_exception():
+    # Подготовка
     manager = settings_manager()
+    empty_filename = "   "
+
+    # Действие и проверка
     with pytest.raises(argument_exception):
-        manager._load_validator("   ")
+        manager.load(empty_filename)
 
 
-# Прямая проверка метода convert с валидным словарем данных
+# 9. Прямая проверка метода convert с валидным словарем данных
 def test_settings_manager_convert_success():
+    # Подготовка
     manager = settings_manager()
     data = {
         "name": "АО ВкусВилл",
@@ -76,9 +110,13 @@ def test_settings_manager_convert_success():
         "ownership_form": "АО",
         "is_first_start": False,
     }
+
+    # Действие
     manager.convert(data)
 
+    # Проверка
     assert manager.settings is not None
+    assert manager.settings.organization is not None
     assert manager.settings.name == "АО ВкусВилл"
     assert manager.settings.inn == "7701234567"
     assert manager.settings.bic == "044525225"
@@ -87,29 +125,54 @@ def test_settings_manager_convert_success():
     assert manager.settings.is_first_start is False
 
 
-# Проверка ошибки метода convert при передаче некорректного типа данных
+# 10. Проверка ошибки метода convert при передаче некорректного типа данных
 def test_settings_manager_convert_invalid_type_raises_exception():
+    # Подготовка
     manager = settings_manager()
-    with pytest.raises(argument_exception):
-        manager.convert("строка_вместо_словаря")
+    invalid_cases = ["строка_вместо_словаря", [1, 2, 3], None, 123, 45.6]
 
-    with pytest.raises(argument_exception):
-        manager.convert([1, 2, 3])
-
-    with pytest.raises(argument_exception):
-        manager.convert(None)
+    # Действие и проверка
+    for case in invalid_cases:
+        with pytest.raises(argument_exception):
+            manager.convert(case)
 
 
-# Проверка метода convert при частичном наборе полей
-def test_settings_manager_convert_partial_fields_success():
+# 11. Проверка исключения при отсутствии любого из обязательных полей настроек
+def test_settings_manager_convert_missing_required_field_raises_exception():
+    # Подготовка
     manager = settings_manager()
-    data = {
-        "name": "ООО Новое Имя",
-        "is_first_start": True,
-    }
-    manager.convert(data)
+    required_keys = ["name", "inn", "bic", "account", "ownership_form", "is_first_start"]
 
-    assert manager.settings.name == "ООО Новое Имя"
-    assert manager.settings.is_first_start is True
-    # Остальные поля сохраняют значения по умолчанию модели
-    assert manager.settings.inn == "7701234567"
+    # Действие и проверка
+    for missing_key in required_keys:
+        valid_data = {
+            "name": "ООО Новое Имя",
+            "inn": "7701234567",
+            "bic": "044525225",
+            "account": "40702810938000012345",
+            "ownership_form": "ООО",
+            "is_first_start": True,
+        }
+        del valid_data[missing_key]
+        with pytest.raises(argument_exception):
+            manager.convert(valid_data)
+
+
+# 12. Проверка, что небулевые значения для флага первого старта вызывают ошибку
+def test_settings_manager_convert_string_bool_raises_exception():
+    # Подготовка
+    manager = settings_manager()
+    invalid_bools = ["false", "0", 1, 0, "True", None]
+
+    # Действие и проверка
+    for invalid_val in invalid_bools:
+        data = {
+            "name": "ООО Новое Имя",
+            "inn": "7701234567",
+            "bic": "044525225",
+            "account": "40702810938000012345",
+            "ownership_form": "ООО",
+            "is_first_start": invalid_val,
+        }
+        with pytest.raises(argument_exception):
+            manager.convert(data)

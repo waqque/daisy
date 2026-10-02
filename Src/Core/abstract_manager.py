@@ -1,26 +1,23 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 
-#Класс для реалищзации обрабботки и загрудки данных
+
 class abstract_manager(ABC):
-    #Полный путь к файлу
-    __file_name:str = ""
-    #Флаг о том что загрузка произошла успешко
-    __is_loaded:bool = False
-    #Загруженные сырые данные 
-    __data:list = []
+    # Базовый абстрактный класс для менеджеров данных
 
-    #Загурзка данных
+    def __init__(self) -> None:
+        # Флаг успешной загрузки данных на уровне экземпляра
+        self._is_loaded: bool = False
 
-    def load(self, file_name:str = "") -> None:
+    @abstractmethod
+    def convert(self, data: dict) -> None:
+        # Абстрактный метод обработки и конвертации загруженных данных
         pass
 
-    #Обработка загруженных данных 
-
-    def convert(self) -> bool:
+    def load(self, file_name: str = "") -> bool:
+        # Базовый метод загрузки данных
         return False
-
-    #Проверка на загрузку данных
 
     @property
     def is_loaded(self) -> bool:
-        return self.__is_loaded
+        # Проверка факта успешной загрузки данных
+        return self._is_loaded

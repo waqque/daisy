@@ -1,23 +1,25 @@
 import pytest
-from Src.Core.exceptions import argument_exception
+from Src.Core.exceptions import argument_exception, operation_exception
 from Src.Logics.storage_manager import storage_manager
 from Src.Models.nomenclature_group_model import nomenclature_group_model
+from Src.Models.nomenclature_model import nomenclature_model
+from Src.Models.organization_model import organization_model
 from Src.Models.range_model import range_model
+from Src.Models.settings_model import settings_model
 from Src.Models.storage_model import storage_model
 
 
-# Проверка реализации шаблона Singleton для storage_manager
+# 1. Проверка реализации шаблона Singleton для storage_manager
 def test_storage_manager_singleton_same_instance():
     # Подготовка и Действие
     manager1 = storage_manager()
     manager2 = storage_manager()
 
-    # Проверки
+    # Проверка
     assert manager1 is manager2
-    assert manager1 == manager2
 
 
-# Проверка наличия всех ключевых секций в словаре данных хранилища
+# 2. Проверка наличия всех ключевых секций в словаре данных хранилища
 def test_storage_manager_data_all_sections_exist():
     # Подготовка
     manager = storage_manager()
@@ -25,7 +27,7 @@ def test_storage_manager_data_all_sections_exist():
     # Действие
     data = manager.data
 
-    # Проверки
+    # Проверка
     assert "ranges" in data
     assert "groups" in data
     assert "nomenclatures" in data
@@ -33,54 +35,121 @@ def test_storage_manager_data_all_sections_exist():
     assert "organizations" in data
 
 
-# Проверка уникальности сохраняемых объектов по unique_code
-def test_storage_manager_add_entity_ignore_duplicate_code():
+# 3. Проверка, что добавление сущности с уже существующим наименованием вызывает operation_exception
+def test_storage_manager_add_entity_duplicate_name_raises_exception():
     # Подготовка
     manager = storage_manager()
     manager.clear()
     unit1 = range_model("грамм", 1.0)
     unit2 = range_model("грамм", 1.0)
-    unit2.unique_code = unit1.unique_code
-
-    # Действие
     manager.add_entity("ranges", unit1)
-    manager.add_entity("ranges", unit2)
 
-    # Проверки
-    assert len(manager.ranges) == 1
-    assert manager.ranges[0] == unit1
+    # Действие и проверка
+    with pytest.raises(operation_exception):
+        manager.add_entity("ranges", unit2)
 
 
-# Проверка ошибки добавления сущности с неизвестным ключом коллекции
+# 4. Проверка, что дублирование уникального кода также вызывает исключение
+def test_storage_manager_add_entity_duplicate_code_raises_exception():
+    # Подготовка
+    manager = storage_manager()
+    manager.clear()
+    unit1 = range_model("грамм", 1.0)
+    unit2 = range_model("миллиграмм", 0.001)
+    unit2.unique_code = unit1.unique_code
+    manager.add_entity("ranges", unit1)
+
+    # Действие и проверка
+    with pytest.raises(operation_exception):
+        manager.add_entity("ranges", unit2)
+
+
+# 5. Проверка запрета добавления модели неподходящего типа в коллекцию
+def test_storage_manager_add_entity_mismatched_type_raises_exception():
+    # Подготовка
+    manager = storage_manager()
+    manager.clear()
+    wrong_entity = storage_model("Склад сырья")
+
+    # Действие и проверка
+    with pytest.raises(argument_exception):
+        manager.add_entity("ranges", wrong_entity)
+
+
+# 6. Проверка ошибки добавления сущности с неизвестным ключом коллекции
 def test_storage_manager_add_entity_invalid_key_raises_exception():
+    # Подготовка
     manager = storage_manager()
     unit = range_model("грамм", 1.0)
+    invalid_key = "unknown_category_123"
+
+    # Действие и проверка
     with pytest.raises(argument_exception):
-        manager.add_entity("unknown_category_123", unit)
+        manager.add_entity(invalid_key, unit)
 
 
-# Проверка ошибки добавления объекта, не являющегося наследником base_model
+# 7. Проверка ошибки добавления объекта, не являющегося наследником base_model
 def test_storage_manager_add_entity_invalid_entity_raises_exception():
+    # Подготовка
     manager = storage_manager()
+    invalid_entity = "не_сущность_модели"
+
+    # Действие и проверка
     with pytest.raises(argument_exception):
-        manager.add_entity("ranges", "не_сущность_модели")
+        manager.add_entity("ranges", invalid_entity)
 
 
-# Проверка очистки всех списков в хранилище
+# 8. Проверка инкапсуляции: внешняя модификация возвращаемого списка не ломает хранилище
+def test_storage_manager_properties_return_copies():
+    # Подготовка
+    manager = storage_manager()
+    manager.clear()
+    unit = range_model("грамм", 1.0)
+    manager.add_entity("ranges", unit)
+
+    # Действие: попытка добавить элемент в возвращенный список
+    manager.ranges.append(range_model("кг", 1000.0))
+
+    # Проверка
+    assert len(manager.ranges) == 1
+
+
+# 9. Проверка переключения флага is_loaded при инициализации данных
+def test_storage_manager_is_loaded_state():
+    # Подготовка
+    manager = storage_manager()
+    manager.clear()
+    initial_loaded = manager.is_loaded
+
+    # Действие
+    manager.init_data()
+
+    # Проверка
+    assert initial_loaded is False
+    assert manager.is_loaded is True
+
+
+# 10. Проверка полной очистки всех списков в хранилище
 def test_storage_manager_clear_success():
+    # Подготовка
     manager = storage_manager()
     manager.init_data()
-    assert len(manager.ranges) > 0
+    has_data_before = len(manager.ranges) > 0
 
+    # Действие
     manager.clear()
+
+    # Проверка
+    assert has_data_before is True
     assert len(manager.ranges) == 0
     assert len(manager.groups) == 0
     assert len(manager.nomenclatures) == 0
     assert len(manager.storages) == 0
     assert len(manager.organizations) == 0
+    assert manager.is_loaded is False
 
 
-# Проверка метода convert для наполнения коллекций хранилища из словаря
+# 11. Проверка метода convert для наполнения коллекций хранилища из словаря
 def test_storage_manager_convert_populate_from_dict():
     # Подготовка
     manager = storage_manager()
@@ -93,41 +162,115 @@ def test_storage_manager_convert_populate_from_dict():
     # Действие
     manager.convert(sample_data)
 
-    # Проверки
+    # Проверка
     assert len(manager.storages) == 1
     assert len(manager.groups) == 1
     assert manager.storages[0].name == "Склад бара"
     assert manager.groups[0].name == "Напитки"
+    assert manager.is_loaded is True
 
 
-# Проверка ошибки метода convert при передаче невалидного типа данных
+# 12. Проверка ошибки метода convert при передаче невалидного типа данных
 def test_storage_manager_convert_invalid_source_type_raises_exception():
     # Подготовка
     manager = storage_manager()
-    invalid_source = "строка_вместо_словаря"
+    invalid_data = "строка_вместо_словаря"
 
-    # Действие и Проверки
+    # Действие и проверка
     with pytest.raises(argument_exception):
-        manager.convert(invalid_source)
+        manager.convert(invalid_data)
 
 
-# Проверка корректности состава первичных данных (seed data) при первом старте
-def test_storage_manager_init_data_seed_entities_on_first_start():
+# 13. Строгая проверка состава первичных данных (seed data) и ссылочной целостности объектов
+def test_storage_manager_init_data_seed_entities_exact():
     # Подготовка
     manager = storage_manager()
 
     # Действие
     manager.init_data()
 
-    # Проверки
-    assert len(manager.ranges) >= 3
-    assert len(manager.groups) >= 2
-    assert len(manager.nomenclatures) >= 2
-    assert len(manager.storages) >= 2
-    assert len(manager.organizations) >= 1
+    # Проверка количества сущностей
+    assert len(manager.ranges) == 3
+    assert len(manager.groups) == 2
+    assert len(manager.nomenclatures) == 6
+    assert len(manager.storages) == 2
+    assert len(manager.organizations) == 1
 
-    # Проверка связей созданной номенклатуры
+    # Проверка уникальности наименований в каждой коллекции
+    for section_name, items in manager.data.items():
+        names = [item.name.lower() for item in items]
+        assert len(names) == len(set(names)), f"Обнаружены дубликаты в секции {section_name}"
+
+    # Проверка ссылочной целостности (номенклатура ссылается на те же объекты в памяти)
+    g_unit = next(item for item in manager.ranges if item.name == "грамм")
+    kg_unit = next(item for item in manager.ranges if item.name == "кг")
+    pcs_unit = next(item for item in manager.ranges if item.name == "шт")
+    raw_group = next(item for item in manager.groups if item.name == "Сырье")
+    dairy_group = next(item for item in manager.groups if item.name == "Молочная продукция")
+
     sugar = next(item for item in manager.nomenclatures if item.name == "Сахар")
-    assert sugar.range.name == "кг"
-    assert sugar.range.conversion_factor == 1000.0
-    assert sugar.group.name == "Сырье"
+    assert sugar.range is kg_unit
+    assert sugar.group is raw_group
+
+    milk = next(item for item in manager.nomenclatures if item.name == "Молоко 3.2%")
+    assert milk.range is g_unit
+    assert milk.group is dairy_group
+
+    flour = next(item for item in manager.nomenclatures if item.name == "Мука")
+    assert flour.range is g_unit
+
+    egg = next(item for item in manager.nomenclatures if item.name == "Яйцо")
+    assert egg.range is pcs_unit
+
+
+# 14. Проверка ветки первого старта is_first_start = False: данные не должны создаваться
+def test_storage_manager_start_with_first_start_false():
+    # Подготовка
+    manager = storage_manager()
+    manager.clear()
+
+    settings = settings_model()
+    settings.organization = organization_model(
+        name="ООО Ромашка",
+        inn="7701234567",
+        bic="044525225",
+        account="40702810938000012345",
+        ownership_form="ООО",
+    )
+    settings.is_first_start = False
+
+    # Действие
+    manager.start(settings)
+
+    # Проверка
+    assert manager.is_loaded is True
+    assert len(manager.ranges) == 0
+    assert len(manager.groups) == 0
+    assert len(manager.nomenclatures) == 0
+    assert len(manager.storages) == 0
+
+
+# 15. Проверка ветки первого старта is_first_start = True: данные успешно формируются
+def test_storage_manager_start_with_first_start_true():
+    # Подготовка
+    manager = storage_manager()
+    manager.clear()
+
+    settings = settings_model()
+    settings.organization = organization_model(
+        name="ООО Ромашка",
+        inn="7701234567",
+        bic="044525225",
+        account="40702810938000012345",
+        ownership_form="ООО",
+    )
+    settings.is_first_start = True
+
+    # Действие
+    manager.start(settings)
+
+    # Проверка
+    assert manager.is_loaded is True
+    assert len(manager.nomenclatures) == 6
+    assert len(manager.organizations) == 1
+    assert manager.organizations[0].name == "ООО Ромашка"
