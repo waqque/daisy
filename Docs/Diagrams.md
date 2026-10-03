@@ -1,6 +1,6 @@
-# UML Диаграммы классов подсистем управления данными
+# UML-диаграммы подсистем управления данными
 
-Данный документ содержит UML-диаграммы классов для компонентов `settings_manager` и `storage_manager` информационной системы сети ресторанов «Ромашка».
+Данный документ содержит UML-диаграммы классов и диаграмму последовательности для компонентов `settings_manager` и `storage_manager` информационной системы сети ресторанов «Ромашка».
 
 ---
 
@@ -165,4 +165,54 @@ classDiagram
     storage_manager "1" *-- "*" base_model : Хранит коллекции сущностей
     nomenclature_model --> nomenclature_group_model : Ссылается на группу
     nomenclature_model --> range_model : Ссылается на единицу
+```
+
+---
+
+## 3. Диаграмма последовательности: Инициализация и запуск хранилища
+
+Диаграмма иллюстрирует базовый сценарий взаимодействия компонентов при запуске хранилища (`storage_manager.start()`): получение настроек через `settings_manager`, загрузку файла `settings.json` (если настройки еще не были загружены) и первичное наполнение данными (`init_data()`) при первом старте системы (`is_first_start == True`).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Клиентский код
+    participant SM as storage_manager
+    participant SetM as settings_manager
+    participant File as settings.json
+    participant Model as settings_model
+
+    Client->>SM: start()
+    activate SM
+
+    SM->>SetM: settings_manager()
+    activate SetM
+    SetM-->>SM: instance
+    deactivate SetM
+
+    opt Настройки не загружены (is_loaded == False)
+        SM->>SetM: load()
+        activate SetM
+        SetM->>File: Чтение файла конфигурации
+        File-->>SetM: JSON данные
+        SetM->>SetM: convert(data)
+        SetM->>Model: Создание settings_model
+        SetM-->>SM: True
+        deactivate SetM
+    end
+
+    SM->>SetM: settings
+    activate SetM
+    SetM-->>SM: settings_model
+    deactivate SetM
+
+    alt Первый запуск (is_first_start == True)
+        SM->>SM: init_data(settings)
+        Note over SM: Первичное наполнение (seed data):<br/>единицы, группы, номенклатура,<br/>склады, организация
+    else Обычный запуск (is_first_start == False)
+        Note over SM: Установка флага is_loaded = True
+    end
+
+    SM-->>Client: Завершение инициализации
+    deactivate SM
 ```
