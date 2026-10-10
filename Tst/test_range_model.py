@@ -136,3 +136,29 @@ def test_range_model_to_base_multilevel_calculation():
 
     # Проверка
     assert result == 2_500_000.0
+
+
+# 12. Проверка фабричного метода создания килограмма по умолчанию
+def test_range_model_factory_kilogram_default_success():
+    # Действие
+    kg = range_model.create_kilogram()
+
+    # Проверка
+    assert kg.name == "кг"
+    assert kg.conversion_factor == 1000.0
+    assert kg.base_range is not None
+    assert kg.base_range.name == "грамм"
+    assert kg.base_range.conversion_factor == 1.0
+    assert kg.to_base(1.5) == 1500.0
+
+
+# 13. Проверка фабричного метода создания килограмма с кастомным именем
+def test_range_model_factory_kilogram_custom_name_success():
+    # Действие
+    kg = range_model.create_kilogram("килограмм")
+
+    # Проверка
+    assert kg.name == "килограмм"
+    assert kg.conversion_factor == 1000.0
+    assert kg.base_range.name == "грамм"
+    assert kg.to_base(2) == 2000.0

@@ -191,10 +191,11 @@ def test_storage_manager_init_data_seed_entities_exact():
 
     # Проверка количества сущностей
     assert len(manager.ranges) == 3
-    assert len(manager.groups) == 2
-    assert len(manager.nomenclatures) == 6
+    assert len(manager.groups) == 3
+    assert len(manager.nomenclatures) == 8
     assert len(manager.storages) == 2
     assert len(manager.organizations) == 1
+    assert len(manager.recipes) == 1
 
     # Проверка уникальности наименований в каждой коллекции
     for section_name, items in manager.data.items():
@@ -207,6 +208,7 @@ def test_storage_manager_init_data_seed_entities_exact():
     pcs_unit = next(item for item in manager.ranges if item.name == "шт")
     raw_group = next(item for item in manager.groups if item.name == "Сырье")
     dairy_group = next(item for item in manager.groups if item.name == "Молочная продукция")
+    pack_group = next(item for item in manager.groups if item.name == "Упаковка")
 
     sugar = next(item for item in manager.nomenclatures if item.name == "Сахар")
     assert sugar.range is kg_unit
@@ -221,6 +223,14 @@ def test_storage_manager_init_data_seed_entities_exact():
 
     egg = next(item for item in manager.nomenclatures if item.name == "Яйцо")
     assert egg.range is pcs_unit
+
+    box = next(item for item in manager.nomenclatures if item.name == "Контейнер")
+    assert box.group is pack_group
+    assert box.range is pcs_unit
+
+    pancakes_dish = next(item for item in manager.nomenclatures if item.name == "Блинчики")
+    assert pancakes_dish.group is dairy_group
+    assert pancakes_dish.range is pcs_unit
 
 
 # 14. Проверка ветки первого старта is_first_start = False: данные не должны создаваться
@@ -248,6 +258,7 @@ def test_storage_manager_start_with_first_start_false():
     assert len(manager.groups) == 0
     assert len(manager.nomenclatures) == 0
     assert len(manager.storages) == 0
+    assert len(manager.recipes) == 0
 
 
 # 15. Проверка ветки первого старта is_first_start = True: данные успешно формируются
@@ -271,6 +282,66 @@ def test_storage_manager_start_with_first_start_true():
 
     # Проверка
     assert manager.is_loaded is True
-    assert len(manager.nomenclatures) == 6
+    assert len(manager.nomenclatures) == 8
     assert len(manager.organizations) == 1
+    assert len(manager.recipes) == 1
     assert manager.organizations[0].name == "ООО Ромашка"
+
+
+# 16. Проверка корректности сформированного рецепта при первом старте (Docs/Recipe.md)
+def test_storage_manager_init_data_recipe_exact():
+    # Подготовка
+    manager = storage_manager()
+
+    # Действие
+    manager.init_data()
+
+    # Проверка
+    recipe = manager.recipes[0]
+    assert recipe.name == "Блинчики классические"
+    assert recipe.dish.name == "Блинчики"
+    assert len(recipe.rows) == 7
+    assert recipe.gross_weight == 188.0
+    assert recipe.net_weight == 173.0
+
+    # Проверка ссылочной целостности: сырье и упаковка рецепта совпадают с позициями номенклатуры
+    recipe_nomenclatures = {row.nomenclature.name for row in recipe.rows}
+    assert "Молоко 3.2%" in recipe_nomenclatures
+    assert "Мука" in recipe_nomenclatures
+    assert "Яйцо" in recipe_nomenclatures
+    assert "Сахар" in recipe_nomenclatures
+    assert "Соль" in recipe_nomenclatures
+    assert "Масло растительное" in recipe_nomenclatures
+    assert "Контейнер" in recipe_nomenclatures
+
+
+# 17. Проверка инкапсуляции списка рецептов в хранилище
+def test_storage_manager_recipes_returns_copy():
+    # Подготовка
+    manager = storage_manager()
+    manager.init_data()
+    initial_count = len(manager.recipes)
+    dish = manager.recipes[0].dish
+
+    # Действие: попытка добавить рецепт в возвращенный список
+    from Src.Models.recipe_model import recipe_model
+    manager.recipes.append(recipe_model(name="Левый рецепт", dish=dish))
+
+    # Проверка: оригинальный список не изменился
+    assert len(manager.recipes) == initial_count
+
+
+# 18. Проверка бизнес-правила: 1 блюдо - 1 техкарта (запрет дублирования карты для одного блюда)
+def test_storage_manager_one_dish_one_recipe_rule_raises_exception():
+    # Подготовка
+    manager = storage_manager()
+    manager.init_data()
+    existing_recipe = manager.recipes[0]
+    dish = existing_recipe.dish
+
+    from Src.Models.recipe_model import recipe_model
+    second_recipe = recipe_model(name="Блинчики альтернативные", dish=dish)
+
+    # Действие и проверка
+    with pytest.raises(operation_exception):
+        manager.add_entity("recipes", second_recipe)
