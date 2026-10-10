@@ -137,25 +137,42 @@ def test_settings_manager_convert_invalid_type_raises_exception():
             manager.convert(case)
 
 
-# 11. Проверка исключения при отсутствии любого из обязательных полей настроек
-def test_settings_manager_convert_missing_required_field_raises_exception():
+# 11. Проверка использования значений по умолчанию при отсутствии полей в словаре настроек
+def test_settings_manager_convert_missing_fields_uses_defaults():
     # Подготовка
     manager = settings_manager()
-    required_keys = ["name", "inn", "bic", "account", "ownership_form", "is_first_start"]
 
-    # Действие и проверка
-    for missing_key in required_keys:
-        valid_data = {
-            "name": "ООО Новое Имя",
-            "inn": "7701234567",
-            "bic": "044525225",
-            "account": "40702810938000012345",
-            "ownership_form": "ООО",
-            "is_first_start": True,
-        }
-        del valid_data[missing_key]
-        with pytest.raises(argument_exception):
-            manager.convert(valid_data)
+    # Действие: передача пустого словаря
+    manager.convert({})
+
+    # Проверка: должны примениться дефолтные параметры
+    assert manager.settings is not None
+    assert manager.settings.organization is not None
+    assert manager.settings.name == "ООО Ромашка"
+    assert manager.settings.inn == "7701234567"
+    assert manager.settings.bic == "044525225"
+    assert manager.settings.account == "40702810938000012345"
+    assert manager.settings.ownership_form == "ООО"
+    assert manager.settings.is_first_start is True
+
+
+# 11.1. Проверка частичной передачи настроек (переданные поля перезаписываются, остальные берутся по умолчанию)
+def test_settings_manager_convert_partial_data_uses_defaults():
+    # Подготовка
+    manager = settings_manager()
+    partial_data = {
+        "name": "ИП Иванов",
+        "is_first_start": False,
+    }
+
+    # Действие
+    manager.convert(partial_data)
+
+    # Проверка
+    assert manager.settings is not None
+    assert manager.settings.name == "ИП Иванов"
+    assert manager.settings.inn == "7701234567"
+    assert manager.settings.is_first_start is False
 
 
 # 12. Проверка, что небулевые значения для флага первого старта вызывают ошибку

@@ -6,3 +6,8 @@ class storage_model(base_model):
     def __init__(self, name: str) -> None:
         super().__init__()
         self.name = name
+
+    @staticmethod
+    def create(name: str) -> "storage_model":
+        # Фабричный метод создания склада
+        return storage_model(name)

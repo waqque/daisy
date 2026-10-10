@@ -86,3 +86,14 @@ class organization_model(base_model):
                 "ownership_form", "Форма собственности не может быть пустой."
             )
         self.__ownership_form = cleaned
+
+    @staticmethod
+    def create(
+        name: str,
+        inn: str,
+        bic: str,
+        account: str,
+        ownership_form: str,
+    ) -> "organization_model":
+        # Фабричный метод создания организации
+        return organization_model(name, inn, bic, account, ownership_form)
