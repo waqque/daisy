@@ -323,9 +323,9 @@ def test_storage_manager_recipes_returns_copy():
     initial_count = len(manager.recipes)
     dish = manager.recipes[0].dish
 
-    # Действие: попытка добавить рецепт в возвращенный список
+    # Действие: попытка добавить другой рецепт в возвращенный список
     from Src.Models.recipe_model import recipe_model
-    manager.recipes.append(recipe_model(name="Левый рецепт", dish=dish))
+    manager.recipes.append(recipe_model(name="Иной рецепт", dish=dish))
 
     # Проверка: оригинальный список не изменился
     assert len(manager.recipes) == initial_count

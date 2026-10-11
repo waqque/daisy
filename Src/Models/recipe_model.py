@@ -48,10 +48,16 @@ class recipe_model(base_model):
         return list(self.__rows)
 
     def add_row(self, row: recipe_row_model) -> None:
-        # Добавление строки ингредиента в рецепт с валидацией типа
+        # Добавление строки ингредиента в рецепт с валидацией типа и защитой от рекурсии на самого себя
         if not isinstance(row, recipe_row_model):
             raise argument_exception(
                 "row", "Строка рецепта должна быть объектом recipe_row_model."
+            )
+        if row.nested_recipe is not None and (
+            row.nested_recipe is self or row.nested_recipe.dish == self.dish
+        ):
+            raise argument_exception(
+                "row", "Рецепт не может включать сам себя в качестве вложенного полуфабриката."
             )
         self.__rows.append(row)
 
@@ -69,13 +75,30 @@ class recipe_model(base_model):
 
     @property
     def gross_weight(self) -> float:
-        # Расчет суммарного веса брутто всех ингредиентов рецепта
-        return sum(row.gross_weight for row in self.__rows)
+        # Рекурсивный расчет суммарного веса брутто ("блюдо в блюде" / вложенные полуфабрикаты)
+        total = 0.0
+        for row in self.__rows:
+            if row.nested_recipe is not None:
+                total += row.nested_recipe.gross_weight
+            else:
+                total += row.gross_weight
+        return total
 
     @property
     def net_weight(self) -> float:
-        # Расчет суммарного веса нетто всех ингредиентов рецепта
-        return sum(row.net_weight for row in self.__rows)
+        # Рекурсивный расчет суммарного веса нетто ("блюдо в блюде" / вложенные полуфабрикаты)
+        total = 0.0
+        for row in self.__rows:
+            if row.nested_recipe is not None:
+                total += row.nested_recipe.net_weight
+            else:
+                total += row.net_weight
+        return total
+
+    @property
+    def is_composite(self) -> bool:
+        # Признак составной техкарты (включает ли вложенные полуфабрикаты)
+        return any(row.nested_recipe is not None for row in self.__rows)
 
     @staticmethod
     def create(
