@@ -6,3 +6,8 @@ class nomenclature_group_model(base_model):
     def __init__(self, name: str) -> None:
         super().__init__()
         self.name = name
+
+    @staticmethod
+    def create(name: str) -> "nomenclature_group_model":
+        # Фабричный метод создания группы номенклатуры
+        return nomenclature_group_model(name)

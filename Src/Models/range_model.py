@@ -61,3 +61,14 @@ class range_model(base_model):
         if self.__base_range is not None:
             return self.__base_range.to_base(converted)
         return converted
+
+    @staticmethod
+    def create_gram(name: str = "грамм") -> "range_model":
+        # Фабричный метод создания базовой единицы (грамм)
+        return range_model(name, 1.0)
+
+    @staticmethod
+    def create_kilogram(name: str = "кг") -> "range_model":
+        # Фабричный метод создания килограмма с базовой единицей (грамм)
+        base = range_model.create_gram()
+        return range_model(name, 1000.0, base)

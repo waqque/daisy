@@ -74,3 +74,13 @@ class nomenclature_model(base_model):
                 "range", "Единица измерения должна быть объектом range_model."
             )
         self.__range = value
+
+    @staticmethod
+    def create(
+        name: str,
+        full_name: str,
+        group: nomenclature_group_model,
+        range_unit: range_model,
+    ) -> "nomenclature_model":
+        # Фабричный метод создания позиции номенклатуры
+        return nomenclature_model(name, full_name, group, range_unit)
