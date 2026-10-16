@@ -24,6 +24,10 @@ class settings_manager(abstract_manager):
         self.__settings: Optional[settings_model] = None
         self._is_loaded: bool = False
 
+    def __init__(self) -> None:
+        # Защита от повторной инициализации при получении экземпляра Singleton
+        pass
+
     def load(self, file_name: str = "") -> bool:
         # Чтение и загрузка данных конфигурации из файла
         if not isinstance(file_name, str):
@@ -74,6 +78,7 @@ class settings_manager(abstract_manager):
         "account": "40702810938000012345",
         "ownership_form": "ООО",
         "is_first_start": True,
+        "response_format": "TXT",
     }
 
     def convert(self, data: dict) -> None:
@@ -94,6 +99,7 @@ class settings_manager(abstract_manager):
         bic = data.get("bic", self.__default_data["bic"])
         account = data.get("account", self.__default_data["account"])
         ownership_form = data.get("ownership_form", self.__default_data["ownership_form"])
+        response_format = data.get("response_format", self.__default_data["response_format"])
 
         org = organization_model(
             name=name,
@@ -106,8 +112,10 @@ class settings_manager(abstract_manager):
         model = settings_model()
         model.organization = org
         model.is_first_start = is_first_start
+        model.response_format = response_format
 
         self.__settings = model
+        self._is_loaded = True
 
     @property
     def settings(self) -> Optional[settings_model]:

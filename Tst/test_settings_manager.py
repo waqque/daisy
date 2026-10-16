@@ -193,3 +193,41 @@ def test_settings_manager_convert_string_bool_raises_exception():
         }
         with pytest.raises(argument_exception):
             manager.convert(data)
+
+
+# 13. Проверка успешной загрузки response_format для всех допустимых значений
+def test_settings_manager_convert_response_format_allowed_values():
+    # Подготовка
+    manager = settings_manager()
+    formats = ["CSV", "Markdown", "XML", "TXT", "HTML"]
+
+    # Действие и проверка
+    for fmt in formats:
+        data = {"response_format": fmt}
+        manager.convert(data)
+        assert manager.settings.response_format.name == fmt.upper()
+
+
+# 14. Проверка ошибки при некорректном значении response_format
+def test_settings_manager_convert_response_format_invalid_raises_exception():
+    # Подготовка
+    manager = settings_manager()
+    invalid_formats = ["PDF", "JSON", 123, None]
+
+    # Действие и проверка
+    for fmt in invalid_formats:
+        data = {"response_format": fmt}
+        with pytest.raises(argument_exception):
+            manager.convert(data)
+
+
+# 15. Проверка значения по умолчанию для response_format
+def test_settings_manager_convert_response_format_default():
+    # Подготовка
+    manager = settings_manager()
+
+    # Действие
+    manager.convert({})
+
+    # Проверка
+    assert manager.settings.response_format.name == "TXT"

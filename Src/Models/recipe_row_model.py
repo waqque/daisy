@@ -105,6 +105,16 @@ class recipe_row_model(base_model):
         self.__net_weight = float(value)
 
     @property
+    def brutto(self) -> float:
+        # Синоним к весу брутто
+        return self.gross_weight
+
+    @property
+    def netto(self) -> float:
+        # Синоним к весу нетто
+        return self.net_weight
+
+    @property
     def range(self) -> range_model:
         # Единица измерения строки (делегируется из номенклатуры)
         return self.__nomenclature.range
