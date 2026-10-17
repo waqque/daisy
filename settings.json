@@ -4,5 +4,6 @@
   "bic": "044525225",
   "account": "40702810938000012345",
   "ownership_form": "ООО",
-  "is_first_start": true
+  "is_first_start": true,
+  "response_format": "TXT"
 }

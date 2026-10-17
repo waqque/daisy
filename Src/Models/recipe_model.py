@@ -47,6 +47,11 @@ class recipe_model(base_model):
         # Инкапсулированная копия списка строк рецепта
         return list(self.__rows)
 
+    @property
+    def items(self) -> list:
+        # Синоним к списку строк рецепта
+        return self.rows
+
     def add_row(self, row: recipe_row_model) -> None:
         # Добавление строки ингредиента в рецепт с валидацией типа и защитой от рекурсии на самого себя
         if not isinstance(row, recipe_row_model):
