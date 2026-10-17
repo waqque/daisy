@@ -70,3 +70,7 @@ class base_model(ABC):
     if not isinstance(other, base_model):
       return False
     return self.unique_code == other.unique_code
+
+  def __hash__(self) -> int:
+    # Хеширование модели по уникальному коду
+    return hash(self.unique_code)

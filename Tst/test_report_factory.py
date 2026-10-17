@@ -90,3 +90,41 @@ def test_report_factory_create_default():
     result = factory.create_default(recipe)
     assert result is not None
     assert "<recipe" in result.text
+
+
+# 6. Проверка динамической регистрации нового типа отчета в фабрике (Open/Closed Principle)
+def test_report_factory_register_new_format_success():
+    from Src.Core.abstract_report import abstract_report
+    from Src.Dtos.report_result_dto import report_result_dto
+    from Src.Models.recipe_model import recipe_model
+
+    # Подготовка
+    factory = report_factory()
+
+    class custom_report(abstract_report):
+        def __init__(self):
+            super().__init__()
+            self.register(recipe_model, lambda r: report_result_dto(text="custom"))
+
+    # Действие: регистрируем кастомный класс для типа TXT
+    factory.register(report_type_enum.TXT, custom_report)
+    created = factory.create(report_type_enum.TXT)
+
+    # Проверка
+    assert isinstance(created, custom_report)
+    assert created.build(storage_manager().recipes[0]).text == "custom"
+
+
+# 7. Проверка валидации аргументов метода register в фабрике
+def test_report_factory_register_invalid_arguments_raises_exception():
+    # Подготовка
+    factory = report_factory()
+
+    # Проверка некорректного типа отчета
+    with pytest.raises(argument_exception):
+        factory.register("NOT_AN_ENUM", text_report)
+
+    # Проверка некорректного класса отчета (не наследник abstract_report)
+    with pytest.raises(argument_exception):
+        factory.register(report_type_enum.TXT, dict)
+

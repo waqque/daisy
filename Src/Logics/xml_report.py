@@ -1,6 +1,5 @@
 from typing import Optional
 from Src.Core.abstract_report import abstract_report
-from Src.Core.exceptions import argument_exception
 from Src.Dtos.report_result_dto import report_result_dto
 from Src.Models.nomenclature_model import nomenclature_model
 from Src.Models.range_model import range_model
@@ -11,55 +10,71 @@ class xml_report(abstract_report):
     # Отчет в формате XML
     __recipe: Optional[recipe_model] = None
 
+    def __init__(self) -> None:
+        # Регистрация обработчиков сущностей для формата XML
+        super().__init__()
+        self.register(recipe_model, self._build_recipe)
+        self.register(nomenclature_model, self._build_nomenclature)
+        self.register(range_model, self._build_range)
+
     @property
     def recipe(self) -> Optional[recipe_model]:
         # Получение текущей технологической карты отчета
         return self.__recipe
 
-    def build(self, source) -> report_result_dto:
-        # Построение XML-отчета
-        if source is None:
-            raise argument_exception("source", "Источник данных не может быть None.")
+    def _build_recipe(self, source: recipe_model) -> report_result_dto:
+        # Построение XML-отчета по технологической карте
+        self.__recipe = source
+        lines = [
+            '<?xml version="1.0" encoding="utf-8"?>',
+            f'<recipe name="{source.name}" code="{source.unique_code}">',
+            "  <items>",
+        ]
+        for item in self.__recipe.items:
+            lines.extend([
+                "    <item>",
+                f"      <code>{item.unique_code}</code>",
+                f"      <name>{item.name}</name>",
+                f"      <brutto>{item.brutto}</brutto>",
+                f"      <netto>{item.netto}</netto>",
+                "    </item>",
+            ])
+        lines.extend([
+            "  </items>",
+            "</recipe>",
+        ])
+        result = report_result_dto()
+        result.text = "\n".join(lines)
+        return result
 
-        lines = ['<?xml version="1.0" encoding="utf-8"?>']
+    def _build_nomenclature(self, source: nomenclature_model) -> report_result_dto:
+        # Построение XML-отчета по номенклатуре
+        group = source.group.name if source.group else ""
+        range_unit = source.range.name if source.range else ""
+        lines = [
+            '<?xml version="1.0" encoding="utf-8"?>',
+            f'<nomenclature code="{source.unique_code}">',
+            f"  <name>{source.name}</name>",
+            f"  <full_name>{source.full_name}</full_name>",
+            f"  <group>{group}</group>",
+            f"  <range>{range_unit}</range>",
+            "</nomenclature>",
+        ]
+        result = report_result_dto()
+        result.text = "\n".join(lines)
+        return result
 
-        if isinstance(source, recipe_model):
-            self.__recipe = source
-            lines.append(f'<recipe name="{source.name}" code="{source.unique_code}">')
-            lines.append("  <items>")
-            for item in self.__recipe.items:
-                lines.append("    <item>")
-                lines.append(f"      <code>{item.unique_code}</code>")
-                lines.append(f"      <name>{item.name}</name>")
-                lines.append(f"      <brutto>{item.brutto}</brutto>")
-                lines.append(f"      <netto>{item.netto}</netto>")
-                lines.append("    </item>")
-            lines.append("  </items>")
-            lines.append("</recipe>")
-
-        elif isinstance(source, nomenclature_model):
-            group = source.group.name if source.group else ""
-            range_unit = source.range.name if source.range else ""
-            lines.append(f'<nomenclature code="{source.unique_code}">')
-            lines.append(f"  <name>{source.name}</name>")
-            lines.append(f"  <full_name>{source.full_name}</full_name>")
-            lines.append(f"  <group>{group}</group>")
-            lines.append(f"  <range>{range_unit}</range>")
-            lines.append("</nomenclature>")
-
-        elif isinstance(source, range_model):
-            base = source.base_range.name if source.base_range else ""
-            lines.append(f'<range code="{source.unique_code}">')
-            lines.append(f"  <name>{source.name}</name>")
-            lines.append(f"  <conversion_factor>{source.conversion_factor}</conversion_factor>")
-            lines.append(f"  <base_range>{base}</base_range>")
-            lines.append("</range>")
-
-        else:
-            raise argument_exception(
-                "source", "Неподдерживаемый тип источника данных."
-            )
-
+    def _build_range(self, source: range_model) -> report_result_dto:
+        # Построение XML-отчета по единице измерения
+        base = source.base_range.name if source.base_range else ""
+        lines = [
+            '<?xml version="1.0" encoding="utf-8"?>',
+            f'<range code="{source.unique_code}">',
+            f"  <name>{source.name}</name>",
+            f"  <conversion_factor>{source.conversion_factor}</conversion_factor>",
+            f"  <base_range>{base}</base_range>",
+            "</range>",
+        ]
         result = report_result_dto()
         result.text = "\n".join(lines)
         return result

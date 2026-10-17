@@ -345,3 +345,61 @@ def test_storage_manager_one_dish_one_recipe_rule_raises_exception():
     # Действие и проверка
     with pytest.raises(operation_exception):
         manager.add_entity("recipes", second_recipe)
+
+
+# 19. Проверка поиска сущности по коду и наименованию через get_by_code
+def test_storage_manager_get_by_code_and_name_success():
+    # Подготовка
+    manager = storage_manager()
+    manager.init_data()
+    recipe = manager.recipes[0]
+
+    # Действие и проверка: поиск по коду
+    found_by_code = manager.get_by_code("recipe", recipe.unique_code)
+    assert found_by_code is not None
+    assert found_by_code.unique_code == recipe.unique_code
+
+    # Поиск по наименованию
+    found_by_name = manager.get_by_code("рецепт", recipe.name)
+    assert found_by_name is not None
+    assert found_by_name.name == recipe.name
+
+    # Несуществующая сущность и неподдерживаемый тип
+    assert manager.get_by_code("recipe", "unknown_123") is None
+    assert manager.get_by_code("invalid_type", "123") is None
+    assert manager.is_valid_type("recipe") is True
+    assert manager.is_valid_type("номенклатура") is True
+    assert manager.is_valid_type("invalid_type") is False
+
+
+# 20. Проверка метода load для соответствия LSP контракту abstract_manager
+def test_storage_manager_load_lsp_success():
+    # Подготовка
+    manager = storage_manager()
+    manager.clear()
+
+    # Действие
+    result = manager.load()
+
+    # Проверка
+    assert result is True
+    assert manager.is_loaded is True
+    assert len(manager.nomenclatures) > 0
+
+
+# 21. Проверка прямого вызова storage_seeder (Single Responsibility Principle)
+def test_storage_seeder_direct_seed_success():
+    from Src.Logics.storage_seeder import storage_seeder
+
+    # Подготовка
+    manager = storage_manager()
+    manager.clear()
+    seeder = storage_seeder()
+
+    # Действие
+    seeder.seed(manager)
+
+    # Проверка
+    assert manager.is_loaded is True
+    assert len(manager.recipes) > 0
+    assert len(manager.storages) > 0

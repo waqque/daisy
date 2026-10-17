@@ -27,3 +27,17 @@ class report_result_dto:
     def data(self, value: bytes) -> None:
         # Установка бинарного содержимого отчета
         self.__data = bytes(value)
+
+    @property
+    def binary(self) -> list:
+        # Бинарное содержимое отчета в виде списка
+        return list(self.__data)
+
+    @binary.setter
+    def binary(self, value: list) -> None:
+        # Установка бинарного содержимого
+        if isinstance(value, (list, bytes, bytearray)):
+            self.__data = bytes(value)
+            if len(self.__data) > 0:
+                self.__text = ""
+

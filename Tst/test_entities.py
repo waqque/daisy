@@ -75,3 +75,17 @@ def test_base_model_empty_code_raises_exception():
     # Действие и проверка
     with pytest.raises(argument_exception):
         entity.unique_code = empty_code
+
+
+# 6. Проверяем корректную работу хеширования модели (__hash__) для использования в множествах
+def test_base_model_hash_support():
+    # Подготовка
+    entity_1 = test_entity()
+    entity_2 = test_entity()
+
+    # Действие
+    entity_set = {entity_1, entity_2}
+
+    # Проверка
+    assert len(entity_set) == 2
+    assert hash(entity_1) == hash(entity_1.unique_code)

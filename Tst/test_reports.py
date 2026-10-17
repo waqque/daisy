@@ -155,3 +155,41 @@ def test_reports_invalid_source_raises_exception():
             report.build(None)
         with pytest.raises(argument_exception):
             report.build("некорректный_источник")
+
+
+# 10. Проверка динамической регистрации обработчика для новой модели без изменения кода отчета (Open/Closed Principle)
+def test_report_register_new_model_handler_success():
+    from Src.Dtos.report_result_dto import report_result_dto
+
+    # Подготовка: берем модель организации, для которой изначально нет обработчика
+    storage = storage_manager()
+    storage.init_data()
+    org = storage.organizations[0]
+    report = text_report()
+
+    # До регистрации попытка построить отчет вызывает исключение
+    with pytest.raises(argument_exception):
+        report.build(org)
+
+    # Действие: регистрируем новый обработчик (OCP)
+    report.register(
+        type(org),
+        lambda source: report_result_dto(text=f"ОРГАНИЗАЦИЯ: {source.name} | ИНН: {source.inn}")
+    )
+    result = report.build(org)
+
+    # Проверка
+    assert result.text.startswith("ОРГАНИЗАЦИЯ: ООО Ромашка")
+    assert "7701234567" in result.text
+
+
+# 11. Проверка валидации аргументов метода register в отчетах
+def test_report_register_validation():
+    report = text_report()
+
+    with pytest.raises(argument_exception):
+        report.register("NOT_A_TYPE", lambda x: None)
+
+    with pytest.raises(argument_exception):
+        report.register(int, "NOT_CALLABLE")
+
