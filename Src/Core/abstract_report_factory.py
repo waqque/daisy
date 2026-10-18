@@ -8,9 +8,13 @@ class abstract_report_factory(ABC):
     # Абстрактная фабрика для создания отчетов
 
     @abstractmethod
+    def _create(self, report_type: report_type_enum) -> abstract_report:
+        # Внутренний метод создания экземпляра отчета по переданному типу
+        pass
+
     def create(self, report_type: report_type_enum) -> abstract_report:
         # Создание экземпляра отчета по переданному типу
-        pass
+        return self._create(report_type)
 
     @abstractmethod
     def create_default(self, source=None) -> object:

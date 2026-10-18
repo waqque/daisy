@@ -51,3 +51,30 @@ class csv_report(abstract_report):
         ]
         text_content = "\n".join(lines)
         return report_result_dto(text=text_content, data=text_content.encode("utf-8"))
+
+    @property
+    def mimetype(self) -> str:
+        # MIME-тип CSV отчета
+        return "text/csv; charset=utf-8"
+
+    @property
+    def file_extension(self) -> str:
+        # Расширение файла CSV
+        return "csv"
+
+    @property
+    def as_attachment(self) -> bool:
+        # Отчет отдается как файл для скачивания
+        return True
+
+    def create_response(self, result: report_result_dto, filename: str = "report"):
+        # Формирование ответа со скачиванием CSV-файла
+        import io
+        import flask
+
+        return flask.send_file(
+            io.BytesIO(result.data),
+            mimetype=self.mimetype,
+            as_attachment=True,
+            download_name=f"{filename}.{self.file_extension}",
+        )

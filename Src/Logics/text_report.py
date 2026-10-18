@@ -51,3 +51,13 @@ class text_report(abstract_report):
         result = report_result_dto()
         result.text = f"{header}\n{line}"
         return result
+
+    @property
+    def mimetype(self) -> str:
+        # MIME-тип текстового отчета
+        return "text/plain; charset=utf-8"
+
+    @property
+    def file_extension(self) -> str:
+        # Расширение текстового файла
+        return "txt"

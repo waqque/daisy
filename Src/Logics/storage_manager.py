@@ -201,7 +201,28 @@ class storage_manager(abstract_manager):
 
         c = str(code).strip().lower()
         for item in self.__data[key]:
-            if str(item.unique_code).lower() == c or str(item.name).strip().lower() == c:
+            if str(item.unique_code).lower() == c or str(item.id).lower() == c or str(item.name).strip().lower() == c:
                 return item
 
-        return None
+        return None
+
+    def get_entity(self, entity_type: str, entity_code: str):
+        # Поиск сущности по типу и уникальному коду или наименованию для REST API
+        if not self._is_loaded:
+            self.start()
+
+        norm_type = str(entity_type).lower().strip()
+        key = self.__type_aliases.get(norm_type)
+        if not key or key not in self.__data:
+            return None, f"Неподдерживаемый тип сущности: {entity_type}", 400
+
+        c = str(entity_code).strip()
+        for item in self.__data[key]:
+            if (
+                str(item.id).lower() == c.lower()
+                or str(item.unique_code).lower() == c.lower()
+                or item.name.lower() == c.lower()
+            ):
+                return item, None, 200
+
+        return None, f"Сущность типа '{entity_type}' с кодом '{entity_code}' не найдена.", 404

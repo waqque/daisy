@@ -1,4 +1,3 @@
-import io
 import connexion
 import flask
 from Src.Dtos.report_type_dto import report_type_enum
@@ -10,55 +9,17 @@ api = connexion.FlaskApp(__name__, specification_dir="./")
 
 # Инициализация хранилища данных и настроек
 storage = storage_manager()
-storage.start()
 
 
-def get_entity(entity_type: str, entity_code: str):
-    # Поиск сущности по типу и коду
-    if not storage.is_loaded:
-        storage.start()
-
-    t = entity_type.lower().strip()
-    c = str(entity_code).strip()
-
-    if t in ("номенклатура", "nomenclature", "nomenclatures"):
-        items = storage.nomenclatures
-    elif t in ("единица измерения", "единица_измерения", "range", "ranges"):
-        items = storage.ranges
-    elif t in ("рецепт", "recipe", "recipes"):
-        items = storage.recipes
-    else:
-        return None, f"Неподдерживаемый тип сущности: {entity_type}", 400
-
-    for item in items:
-        if item.unique_code == c or item.name.lower() == c.lower():
-            return item, None, 200
-
-    return None, f"Сущность типа '{entity_type}' с кодом '{entity_code}' не найдена.", 404
-
-
-def create_response(result, report_type: report_type_enum, filename: str = "report"):
-    # Формирование ответа RestApi в зависимости от формата
-    if report_type == report_type_enum.CSV:
-        return flask.send_file(
-            io.BytesIO(result.data),
-            mimetype="text/csv; charset=utf-8",
-            as_attachment=True,
-            download_name=f"{filename}.csv",
-        )
-    if report_type == report_type_enum.MARKDOWN:
-        return flask.send_file(
-            io.BytesIO(result.data),
-            mimetype="text/markdown; charset=utf-8",
-            as_attachment=True,
-            download_name=f"{filename}.md",
-        )
-    if report_type == report_type_enum.XML:
-        return flask.Response(result.text, mimetype="application/xml; charset=utf-8")
-    if report_type == report_type_enum.HTML:
-        return flask.Response(result.text, mimetype="text/html; charset=utf-8")
-
-    return flask.Response(result.text, mimetype="text/plain; charset=utf-8")
+def create_response(report, result, filename: str = "report"):
+    # Формирование ответа RestApi делегированием полиморфному методу отчета
+    if hasattr(report, "create_response"):
+        return report.create_response(result, filename)
+    if hasattr(result, "create_response"):
+        return result.create_response(report, filename)
+    instance = report_factory().create(result if isinstance(result, report_type_enum) else report)
+    dto = report if not isinstance(result, report_type_enum) else result
+    return instance.create_response(dto, filename)
 
 
 @api.route("/", methods=["GET"])
@@ -98,8 +59,9 @@ def get_report():
             except KeyError:
                 return f"Неподдерживаемый формат отчета: {format_name}", 400
 
-    result = report_factory.create_report(report_type, recipe)
-    return create_response(result, report_type, filename=recipe.name)
+    report = report_factory().create(report_type)
+    result = report.build(recipe)
+    return report.create_response(result, filename=recipe.name)
 
 
 # 5. Метод GET: формирование отчета в указанном формате для указанного типа и кода сущности
@@ -111,26 +73,26 @@ def get_report_by_format(entity_type: str, entity_code: str):
     except KeyError:
         return f"Неподдерживаемый формат отчета: {format_name}", 400
 
-    entity, err_msg, status_code = get_entity(entity_type, entity_code)
+    entity, err_msg, status_code = storage.get_entity(entity_type, entity_code)
     if err_msg:
         return err_msg, status_code
 
-    result = report_factory.create_report(report_type, entity)
-    return create_response(result, report_type, filename=f"{entity_type}_{entity.name}")
+    report = report_factory().create(report_type)
+    result = report.build(entity)
+    return report.create_response(result, filename=f"{entity_type}_{entity.name}")
 
 
 # 8. Метод GET: формирование отчета для указанного типа и кода сущности с использованием create_default
 @api.route("/api/report/default/<entity_type>/<entity_code>", methods=["GET"])
 def get_report_default(entity_type: str, entity_code: str):
-    entity, err_msg, status_code = get_entity(entity_type, entity_code)
+    entity, err_msg, status_code = storage.get_entity(entity_type, entity_code)
     if err_msg:
         return err_msg, status_code
 
     factory = report_factory()
-    result = factory.create_default(entity)
-
-    report_type = factory.settings.response_format if factory.settings else report_type_enum.TXT
-    return create_response(result, report_type, filename=f"{entity_type}_{entity.name}")
+    report = factory.create_default()
+    result = report.build(entity)
+    return report.create_response(result, filename=f"{entity_type}_{entity.name}")
 
 
 if __name__ == "__main__":

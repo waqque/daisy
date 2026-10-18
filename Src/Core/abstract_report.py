@@ -52,3 +52,24 @@ class abstract_report(ABC):
             )
 
         return handler(source)
+
+    @property
+    def mimetype(self) -> str:
+        # MIME-тип формируемого отчета
+        return "text/plain; charset=utf-8"
+
+    @property
+    def file_extension(self) -> str:
+        # Расширение файла отчета
+        return "txt"
+
+    @property
+    def as_attachment(self) -> bool:
+        # Признак передачи в виде вложения (attachment)
+        return False
+
+    def create_response(self, result: report_result_dto, filename: str = "report"):
+        # Полиморфное формирование HTTP-ответа (по умолчанию текстовый ответ)
+        import flask
+
+        return flask.Response(result.text, mimetype=self.mimetype)

@@ -64,8 +64,8 @@ class report_factory(abstract_report_factory):
             )
         self.__mapping[report_type] = report_class
 
-    def create(self, report_type: report_type_enum) -> abstract_report:
-        # Создание экземпляра отчета по переданному типу
+    def _create(self, report_type: report_type_enum) -> abstract_report:
+        # Внутренний метод создания экземпляра отчета по переданному типу
         if not isinstance(report_type, report_type_enum):
             raise argument_exception(
                 "report_type", "Тип отчета должен быть элементом report_type_enum."
@@ -79,19 +79,26 @@ class report_factory(abstract_report_factory):
         report_class = self.__mapping[report_type]
         return report_class()
 
+    def create(self, report_type: report_type_enum) -> abstract_report:
+        # Публичный метод создания экземпляра отчета
+        return self._create(report_type)
+
     def create_default(self, source=None) -> object:
         # Создание экземпляра отчета по умолчанию на основе настроек
         settings = self.__settings or settings_manager().settings
         format_type = settings.response_format if settings and settings.response_format else report_type_enum.TXT
-        report = self.create(format_type)
+        report = self._create(format_type)
         if source is not None:
             return report.build(source)
         return report
 
-
-    @classmethod
-    def create_report(cls, report_type: report_type_enum, source) -> object:
-        # Вспомогательный метод создания и построения отчета
-        factory = cls()
-        report = factory.create(report_type)
-        return report.build(source)
+    def create_report(self, report_type: report_type_enum = None, source=None) -> object:
+        # Создание и построение отчета по указанному типу
+        if not isinstance(self, report_factory):
+            actual_type = self
+            actual_source = report_type
+            return report_factory().create_report(actual_type, actual_source)
+        report = self._create(report_type)
+        if source is not None:
+            return report.build(source)
+        return report

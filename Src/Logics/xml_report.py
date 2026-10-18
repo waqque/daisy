@@ -78,3 +78,13 @@ class xml_report(abstract_report):
         result = report_result_dto()
         result.text = "\n".join(lines)
         return result
+
+    @property
+    def mimetype(self) -> str:
+        # MIME-тип XML отчета
+        return "application/xml; charset=utf-8"
+
+    @property
+    def file_extension(self) -> str:
+        # Расширение файла XML
+        return "xml"

@@ -59,3 +59,30 @@ class markdown_report(abstract_report):
         ]
         text_content = "\n".join(lines)
         return report_result_dto(text=text_content, data=text_content.encode("utf-8"))
+
+    @property
+    def mimetype(self) -> str:
+        # MIME-тип Markdown отчета
+        return "text/markdown; charset=utf-8"
+
+    @property
+    def file_extension(self) -> str:
+        # Расширение файла Markdown
+        return "md"
+
+    @property
+    def as_attachment(self) -> bool:
+        # Отчет отдается как файл для скачивания
+        return True
+
+    def create_response(self, result: report_result_dto, filename: str = "report"):
+        # Формирование ответа со скачиванием Markdown-файла
+        import io
+        import flask
+
+        return flask.send_file(
+            io.BytesIO(result.data),
+            mimetype=self.mimetype,
+            as_attachment=True,
+            download_name=f"{filename}.{self.file_extension}",
+        )
