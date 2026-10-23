@@ -1,0 +1,180 @@
+{
+  "id": "95753ccc-725e-4cc9-bd2a-a9c9e8fd4fae",
+  "name": "Блинчики классические",
+  "dish": {
+    "id": "34d8f6ac-19cc-4c24-a9f9-40c024b55a2a",
+    "name": "Блинчики",
+    "full_name": "Блинчики классические (порция 2 шт.)",
+    "group": {
+      "id": "2316abbf-6e06-46df-b66b-dd6538796251",
+      "name": "Молочная продукция"
+    },
+    "range": {
+      "id": "cbea9cc5-d1b8-492a-9a3b-b46666d82929",
+      "name": "шт",
+      "conversion_factor": 1.0,
+      "base_range": null
+    }
+  },
+  "rows": [
+    {
+      "id": "d2e348ff-3d93-4a33-b13c-1206dbe2bd41",
+      "nomenclature": {
+        "id": "3b4543f4-fc53-41b8-9bc3-df675c2e3d33",
+        "name": "Молоко 3.2%",
+        "full_name": "Молоко пастеризованное 3.2%",
+        "group": {
+          "id": "2316abbf-6e06-46df-b66b-dd6538796251",
+          "name": "Молочная продукция"
+        },
+        "range": {
+          "id": "2b691323-845a-4b15-b5b4-339802b619ed",
+          "name": "грамм",
+          "conversion_factor": 1.0,
+          "base_range": null
+        }
+      },
+      "name": "Молоко 3.2%",
+      "nested_recipe": null,
+      "gross_weight": 100.0,
+      "net_weight": 100.0
+    },
+    {
+      "id": "b6de4c52-bacc-4f38-8954-0ba0ce4e159f",
+      "nomenclature": {
+        "id": "d483142e-9706-4e40-9722-444510654cc1",
+        "name": "Мука",
+        "full_name": "Мука пшеничная в/с",
+        "group": {
+          "id": "f4ff556d-184d-4882-b176-577ab6b691ff",
+          "name": "Сырье"
+        },
+        "range": {
+          "id": "2b691323-845a-4b15-b5b4-339802b619ed",
+          "name": "грамм",
+          "conversion_factor": 1.0,
+          "base_range": null
+        }
+      },
+      "name": "Мука",
+      "nested_recipe": null,
+      "gross_weight": 50.0,
+      "net_weight": 50.0
+    },
+    {
+      "id": "41f3ce37-1f71-41ea-a366-dc6e1308622f",
+      "nomenclature": {
+        "id": "53bd6488-e009-4556-b4e8-8eeeecc02594",
+        "name": "Яйцо",
+        "full_name": "Яйцо куриное",
+        "group": {
+          "id": "f4ff556d-184d-4882-b176-577ab6b691ff",
+          "name": "Сырье"
+        },
+        "range": {
+          "id": "cbea9cc5-d1b8-492a-9a3b-b46666d82929",
+          "name": "шт",
+          "conversion_factor": 1.0,
+          "base_range": null
+        }
+      },
+      "name": "Яйцо",
+      "nested_recipe": null,
+      "gross_weight": 1.0,
+      "net_weight": 1.0
+    },
+    {
+      "id": "37dddce1-b21d-4ee9-82ee-d967a8ac6f87",
+      "nomenclature": {
+        "id": "0b7f1bd8-5470-4b5e-b278-a85b7bf71d25",
+        "name": "Сахар",
+        "full_name": "Сахар белый ГОСТ",
+        "group": {
+          "id": "f4ff556d-184d-4882-b176-577ab6b691ff",
+          "name": "Сырье"
+        },
+        "range": {
+          "id": "37c2fbb1-7ce6-4af6-9ab9-bc66c2c8e7f5",
+          "name": "кг",
+          "conversion_factor": 1000.0,
+          "base_range": {
+            "id": "7b8ec4cf-6382-468a-8b14-282482184a2c",
+            "name": "грамм",
+            "conversion_factor": 1.0,
+            "base_range": null
+          }
+        }
+      },
+      "name": "Сахар",
+      "nested_recipe": null,
+      "gross_weight": 10.0,
+      "net_weight": 10.0
+    },
+    {
+      "id": "1d5b42fa-8688-41c3-9f9f-a8a133a3e8c3",
+      "nomenclature": {
+        "id": "226c97e0-462b-4ed4-97a4-cf875e5f3c0b",
+        "name": "Соль",
+        "full_name": "Соль поваренная",
+        "group": {
+          "id": "f4ff556d-184d-4882-b176-577ab6b691ff",
+          "name": "Сырье"
+        },
+        "range": {
+          "id": "2b691323-845a-4b15-b5b4-339802b619ed",
+          "name": "грамм",
+          "conversion_factor": 1.0,
+          "base_range": null
+        }
+      },
+      "name": "Соль",
+      "nested_recipe": null,
+      "gross_weight": 2.0,
+      "net_weight": 2.0
+    },
+    {
+      "id": "a82d5388-67f3-4618-9ce3-f608f0ff5276",
+      "nomenclature": {
+        "id": "12a5d1e8-86e8-4f2d-b910-3fd420db374d",
+        "name": "Масло растительное",
+        "full_name": "Масло растительное рафинированное",
+        "group": {
+          "id": "f4ff556d-184d-4882-b176-577ab6b691ff",
+          "name": "Сырье"
+        },
+        "range": {
+          "id": "2b691323-845a-4b15-b5b4-339802b619ed",
+          "name": "грамм",
+          "conversion_factor": 1.0,
+          "base_range": null
+        }
+      },
+      "name": "Масло растительное",
+      "nested_recipe": null,
+      "gross_weight": 10.0,
+      "net_weight": 10.0
+    },
+    {
+      "id": "3f21aa6e-d5a6-4eda-b9be-535773b16622",
+      "nomenclature": {
+        "id": "78ea4843-1482-42fb-8f83-a9cb64dc9fd4",
+        "name": "Контейнер",
+        "full_name": "Контейнер пищевой картонный для блинчиков",
+        "group": {
+          "id": "77764c03-2d9e-4990-be7c-20de88ed24e9",
+          "name": "Упаковка"
+        },
+        "range": {
+          "id": "cbea9cc5-d1b8-492a-9a3b-b46666d82929",
+          "name": "шт",
+          "conversion_factor": 1.0,
+          "base_range": null
+        }
+      },
+      "name": "Контейнер",
+      "nested_recipe": null,
+      "gross_weight": 15.0,
+      "net_weight": 0.0
+    }
+  ]
+}
