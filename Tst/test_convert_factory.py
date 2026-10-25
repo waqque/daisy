@@ -1,4 +1,5 @@
 import datetime
+from Src.Core.abstract_convert_factory import abstract_convert_factory
 from Src.Logics.basic_convertor import basic_convertor
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.datetime_convertor import datetime_convertor
@@ -9,7 +10,18 @@ from Src.Models.nomenclature_model import nomenclature_model
 from Src.Models.range_model import range_model
 
 
-# 1. Тест convert_factory: получение конвертора по типу через метод create
+# 1. Тест convert_factory: соответствие контракту абстрактной фабрики
+def test_convert_factory_inherits_abstract_convert_factory():
+    # Подготовка и действие
+    factory = convert_factory()
+
+    # Проверка
+    assert isinstance(factory, abstract_convert_factory)
+    assert hasattr(factory, "_mapping")
+    assert isinstance(factory._mapping, dict)
+
+
+# 2. Тест convert_factory: получение конвертора по типу через метод create и словарь маппинга
 def test_convert_factory_create_returns_appropriate_convertor():
     # Подготовка
     factory = convert_factory()
@@ -27,7 +39,7 @@ def test_convert_factory_create_returns_appropriate_convertor():
     assert isinstance(conv_ref, reference_convertor)
 
 
-# 2. Тест convert_factory: конвертация простых типов
+# 3. Тест convert_factory: конвертация простых типов
 def test_convert_factory_convert_primitive_types():
     # Подготовка
     factory = convert_factory()
@@ -41,7 +53,7 @@ def test_convert_factory_convert_primitive_types():
     assert res_str == {"value": "Привет"}
 
 
-# 3. Тест convert_factory: конвертация даты и времени
+# 4. Тест convert_factory: конвертация даты и времени
 def test_convert_factory_convert_datetime():
     # Подготовка
     factory = convert_factory()
@@ -54,7 +66,7 @@ def test_convert_factory_convert_datetime():
     assert result == {"value": "2026-10-23T10:00:00"}
 
 
-# 4. Тест convert_factory: конвертация простой модели
+# 5. Тест convert_factory: конвертация простой модели
 def test_convert_factory_convert_simple_model():
     # Подготовка
     factory = convert_factory()
@@ -71,7 +83,7 @@ def test_convert_factory_convert_simple_model():
     assert "id" in result
 
 
-# 5. Тест convert_factory: конвертация составной модели со ссылками
+# 6. Тест convert_factory: конвертация составной модели со ссылками
 def test_convert_factory_convert_composite_model():
     # Подготовка
     factory = convert_factory()
@@ -95,7 +107,7 @@ def test_convert_factory_convert_composite_model():
     assert result["range"]["conversion_factor"] == 1000.0
 
 
-# 6. Тест convert_factory: комплексная конвертация рецепта из хранилища
+# 7. Тест convert_factory: комплексная конвертация рецепта из хранилища
 def test_convert_factory_convert_recipe_from_storage():
     # Подготовка
     storage = storage_manager()
@@ -117,3 +129,25 @@ def test_convert_factory_convert_recipe_from_storage():
     assert len(result["rows"]) == len(recipe.rows)
     assert isinstance(result["rows"][0], dict)
     assert "nomenclature" in result["rows"][0]
+
+
+# 8. Тест convert_factory: конвертация всех данных хранилища единым блоком
+def test_convert_factory_convert_all_storage_data_single_block():
+    # Подготовка
+    storage = storage_manager()
+    storage.init_data()
+    factory = convert_factory()
+
+    # Действие
+    result = factory.convert(storage.data)
+
+    # Проверка
+    assert isinstance(result, dict)
+    assert "ranges" in result
+    assert "groups" in result
+    assert "nomenclatures" in result
+    assert "recipes" in result
+    assert isinstance(result["ranges"], list)
+    assert isinstance(result["recipes"], list)
+    assert len(result["recipes"]) > 0
+    assert result["recipes"][0]["name"] == "Блинчики классические"

@@ -8,7 +8,8 @@ class basic_convertor(abstract_convertor):
     def convert(self, item: any, field_name: Optional[str] = None) -> dict:
         # Формирование словаря по простым типам: numeric, str
         if item is None:
-            return {}
+            key = field_name if field_name else "value"
+            return {key: None}
 
         # Поддержка переменного порядка аргументов convert(field_name, item)
         if isinstance(item, str) and field_name is not None and not isinstance(field_name, str):

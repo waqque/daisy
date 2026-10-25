@@ -1,4 +1,5 @@
 import datetime
+from Src.Core.abstract_convert_factory import abstract_convert_factory
 from Src.Logics.basic_convertor import basic_convertor
 from Src.Logics.datetime_convertor import datetime_convertor
 from Src.Logics.reference_convertor import reference_convertor
@@ -60,7 +61,21 @@ def test_basic_convertor_object_with_basic_fields_success():
     assert "id" in result
 
 
-# 4. Тест datetime_convertor: конвертация datetime
+# 4. Тест basic_convertor: проверка возврата None (null) при пустом значении
+def test_basic_convertor_none_returns_null():
+    # Подготовка
+    convertor = basic_convertor()
+
+    # Действие
+    result_with_field = convertor.convert(None, "comment")
+    result_default = convertor.convert(None)
+
+    # Проверка
+    assert result_with_field == {"comment": None}
+    assert result_default == {"value": None}
+
+
+# 5. Тест datetime_convertor: конвертация datetime
 def test_datetime_convertor_primitive_datetime_success():
     # Подготовка
     convertor = datetime_convertor()
@@ -74,7 +89,7 @@ def test_datetime_convertor_primitive_datetime_success():
     assert result == {"created_at": "2026-10-23T12:30:45"}
 
 
-# 5. Тест datetime_convertor: конвертация date
+# 6. Тест datetime_convertor: конвертация date
 def test_datetime_convertor_primitive_date_success():
     # Подготовка
     convertor = datetime_convertor()
@@ -88,7 +103,7 @@ def test_datetime_convertor_primitive_date_success():
     assert result.get("value") == "2026-10-23"
 
 
-# 6. Тест datetime_convertor: извлечение полей DateTime из объекта
+# 7. Тест datetime_convertor: извлечение полей DateTime из объекта
 def test_datetime_convertor_object_with_datetime_success():
     # Подготовка
     class sample_event:
@@ -109,7 +124,7 @@ def test_datetime_convertor_object_with_datetime_success():
     assert "title" not in result
 
 
-# 7. Тест reference_convertor: конвертация одиночной ссылки с именем поля
+# 8. Тест reference_convertor: конвертация одиночной ссылки с именем поля
 def test_reference_convertor_single_reference_success():
     # Подготовка
     convertor = reference_convertor()
@@ -125,7 +140,7 @@ def test_reference_convertor_single_reference_success():
     assert "id" in result["group"]
 
 
-# 8. Тест reference_convertor: конвертация составного объекта с вложенными ссылками
+# 9. Тест reference_convertor: конвертация составного объекта с вложенными ссылками
 def test_reference_convertor_composite_object_success():
     # Подготовка
     convertor = reference_convertor()
@@ -144,3 +159,16 @@ def test_reference_convertor_composite_object_success():
     assert result["range"]["name"] == "грамм"
     assert result["range"]["conversion_factor"] == 1.0
     assert "full_name" not in result
+
+
+# 10. Тест reference_convertor: внедрение зависимости через абстрактную фабрику
+def test_reference_convertor_dependency_injection_with_abstract_factory():
+    # Подготовка
+    from Src.Logics.convert_factory import convert_factory
+    factory = convert_factory()
+
+    # Действие
+    convertor = reference_convertor(factory=factory)
+
+    # Проверка
+    assert isinstance(convertor.factory, abstract_convert_factory)
