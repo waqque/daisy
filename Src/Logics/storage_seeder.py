@@ -19,7 +19,7 @@ class storage_seeder:
 
         # 1. Единицы измерения (фабричные методы)
         g_unit = range_model.create_gram("грамм")
-        kg_unit = range_model.create_kilogram("кг")
+        kg_unit = range_model.create_kilogram("кг", base_range=g_unit)
         pcs_unit = range_model("шт", 1.0)
         for unit in (g_unit, kg_unit, pcs_unit):
             storage.add_entity("ranges", unit)

@@ -68,7 +68,9 @@ class range_model(base_model):
         return range_model(name, 1.0)
 
     @staticmethod
-    def create_kilogram(name: str = "кг") -> "range_model":
+    def create_kilogram(
+        name: str = "кг", base_range: Optional["range_model"] = None
+    ) -> "range_model":
         # Фабричный метод создания килограмма с базовой единицей (грамм)
-        base = range_model.create_gram()
+        base = base_range if base_range is not None else range_model.create_gram()
         return range_model(name, 1000.0, base)
