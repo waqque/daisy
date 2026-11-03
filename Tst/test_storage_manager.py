@@ -402,4 +402,36 @@ def test_storage_seeder_direct_seed_success():
     # Проверка
     assert manager.is_loaded is True
     assert len(manager.recipes) > 0
-    assert len(manager.storages) > 0
+    assert len(manager.storages) > 0
+
+
+# 22. Проверка уникальности единиц измерения и общей ссылки на базовый грамм в хранилище
+def test_storage_manager_seeder_units_uniqueness_and_shared_base_range_id():
+    from Src.Logics.storage_seeder import storage_seeder
+
+    # Подготовка
+    manager = storage_manager()
+    manager.clear()
+    seeder = storage_seeder()
+
+    # Действие
+    seeder.seed(manager)
+
+    # Проверка
+    ranges = manager.ranges
+    gram_unit = next(u for u in ranges if u.name == "грамм")
+    kg_unit = next(u for u in ranges if u.name == "кг")
+
+    # Проверка уникальности идентификаторов в коллекции
+    all_ids = [u.id for u in ranges]
+    assert len(all_ids) == len(set(all_ids))
+
+    # Килограмм ссылается именно на ту же самую единицу "грамм" в памяти
+    assert kg_unit.base_range is gram_unit
+    assert kg_unit.base_range.id == gram_unit.id
+
+    # Проверка, что в сахаре килограмм также имеет ту же базовую единицу
+    sugar = next(n for n in manager.nomenclatures if n.name == "Сахар")
+    assert sugar.range is kg_unit
+    assert sugar.range.base_range is gram_unit
+    assert sugar.range.base_range.id == gram_unit.id

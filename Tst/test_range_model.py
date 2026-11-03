@@ -162,3 +162,16 @@ def test_range_model_factory_kilogram_custom_name_success():
     assert kg.conversion_factor == 1000.0
     assert kg.base_range.name == "грамм"
     assert kg.to_base(2) == 2000.0
+
+
+# 14. Проверка передачи существующей базовой единицы в фабричный метод килограмма
+def test_range_model_factory_kilogram_with_existing_base_range_preserves_instance():
+    # Подготовка
+    existing_gram = range_model.create_gram("грамм")
+
+    # Действие
+    kg = range_model.create_kilogram("кг", base_range=existing_gram)
+
+    # Проверка
+    assert kg.base_range is existing_gram
+    assert kg.base_range.id == existing_gram.id
