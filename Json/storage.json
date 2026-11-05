@@ -1,24 +1,24 @@
 {
   "ranges": [
     {
-      "id": "cda07de0-1ef9-4ced-ae0d-9542afb9f65f",
+      "id": "a1146c8b-a4e5-43d7-879c-87de7f571c99",
       "name": "грамм",
       "conversion_factor": 1.0,
       "base_range": null
     },
     {
-      "id": "3ac76c25-3bb7-4556-98f1-0a0ce7491362",
+      "id": "f50c3148-f377-4b76-ac6d-f58730a65338",
       "name": "кг",
       "conversion_factor": 1000.0,
       "base_range": {
-        "id": "cda07de0-1ef9-4ced-ae0d-9542afb9f65f",
+        "id": "a1146c8b-a4e5-43d7-879c-87de7f571c99",
         "name": "грамм",
         "conversion_factor": 1.0,
         "base_range": null
       }
     },
     {
-      "id": "7d4a63da-5aaa-42df-9366-4cc2fba48a6b",
+      "id": "646fac94-9227-4de4-a6e0-cf06de236978",
       "name": "шт",
       "conversion_factor": 1.0,
       "base_range": null
@@ -26,33 +26,33 @@
   ],
   "groups": [
     {
-      "id": "489a32e1-5158-434f-8e83-1a89051a4730",
+      "id": "7c808fe8-042a-4dd2-92eb-83db8ce6f4f1",
       "name": "Сырье"
     },
     {
-      "id": "a314a10b-d4d5-4d77-9137-e61055b393d2",
+      "id": "a06f7c92-67a3-4cfc-9797-321d77069033",
       "name": "Молочная продукция"
     },
     {
-      "id": "e0a36209-60ba-4bbd-a8f0-1b707aeee1b0",
+      "id": "06e8a7bb-bf19-4ac5-9136-ae4d220511e9",
       "name": "Упаковка"
     }
   ],
   "nomenclatures": [
     {
-      "id": "036c3792-d140-45ca-92de-4ae692ec43b2",
+      "id": "2f3a6aaf-bd7a-4d31-81d7-c56f998abb24",
       "name": "Сахар",
       "full_name": "Сахар белый ГОСТ",
       "group": {
-        "id": "489a32e1-5158-434f-8e83-1a89051a4730",
+        "id": "7c808fe8-042a-4dd2-92eb-83db8ce6f4f1",
         "name": "Сырье"
       },
       "range": {
-        "id": "3ac76c25-3bb7-4556-98f1-0a0ce7491362",
+        "id": "f50c3148-f377-4b76-ac6d-f58730a65338",
         "name": "кг",
         "conversion_factor": 1000.0,
         "base_range": {
-          "id": "cda07de0-1ef9-4ced-ae0d-9542afb9f65f",
+          "id": "a1146c8b-a4e5-43d7-879c-87de7f571c99",
           "name": "грамм",
           "conversion_factor": 1.0,
           "base_range": null
@@ -60,105 +60,105 @@
       }
     },
     {
-      "id": "ddaa1e89-4851-4cd9-b4d9-ca93b3df470d",
+      "id": "cdb1682e-9984-495e-a0a0-b60c0fb3b5d2",
       "name": "Молоко 3.2%",
       "full_name": "Молоко пастеризованное 3.2%",
       "group": {
-        "id": "a314a10b-d4d5-4d77-9137-e61055b393d2",
+        "id": "a06f7c92-67a3-4cfc-9797-321d77069033",
         "name": "Молочная продукция"
       },
       "range": {
-        "id": "cda07de0-1ef9-4ced-ae0d-9542afb9f65f",
+        "id": "a1146c8b-a4e5-43d7-879c-87de7f571c99",
         "name": "грамм",
         "conversion_factor": 1.0,
         "base_range": null
       }
     },
     {
-      "id": "83b9b9cc-d775-4bbf-b77c-fd3852d7bc9b",
+      "id": "9ef0ca74-dc58-4d58-b51f-e0b62f2d6c1a",
       "name": "Мука",
       "full_name": "Мука пшеничная в/с",
       "group": {
-        "id": "489a32e1-5158-434f-8e83-1a89051a4730",
+        "id": "7c808fe8-042a-4dd2-92eb-83db8ce6f4f1",
         "name": "Сырье"
       },
       "range": {
-        "id": "cda07de0-1ef9-4ced-ae0d-9542afb9f65f",
+        "id": "a1146c8b-a4e5-43d7-879c-87de7f571c99",
         "name": "грамм",
         "conversion_factor": 1.0,
         "base_range": null
       }
     },
     {
-      "id": "3cb8c804-38be-4e15-a8c9-a31371e0a523",
+      "id": "43b786bc-9d56-4254-b8ad-9302a04b9a34",
       "name": "Яйцо",
       "full_name": "Яйцо куриное",
       "group": {
-        "id": "489a32e1-5158-434f-8e83-1a89051a4730",
+        "id": "7c808fe8-042a-4dd2-92eb-83db8ce6f4f1",
         "name": "Сырье"
       },
       "range": {
-        "id": "7d4a63da-5aaa-42df-9366-4cc2fba48a6b",
+        "id": "646fac94-9227-4de4-a6e0-cf06de236978",
         "name": "шт",
         "conversion_factor": 1.0,
         "base_range": null
       }
     },
     {
-      "id": "654a7625-e61e-436f-9698-da27e852efe5",
+      "id": "42f6a072-4088-4e15-a636-e0ca0028767c",
       "name": "Соль",
       "full_name": "Соль поваренная",
       "group": {
-        "id": "489a32e1-5158-434f-8e83-1a89051a4730",
+        "id": "7c808fe8-042a-4dd2-92eb-83db8ce6f4f1",
         "name": "Сырье"
       },
       "range": {
-        "id": "cda07de0-1ef9-4ced-ae0d-9542afb9f65f",
+        "id": "a1146c8b-a4e5-43d7-879c-87de7f571c99",
         "name": "грамм",
         "conversion_factor": 1.0,
         "base_range": null
       }
     },
     {
-      "id": "b935517c-4f07-4540-a39c-3098b03fc5c1",
+      "id": "6cd97d23-23b0-48a9-bf65-dd994b9056bf",
       "name": "Масло растительное",
       "full_name": "Масло растительное рафинированное",
       "group": {
-        "id": "489a32e1-5158-434f-8e83-1a89051a4730",
+        "id": "7c808fe8-042a-4dd2-92eb-83db8ce6f4f1",
         "name": "Сырье"
       },
       "range": {
-        "id": "cda07de0-1ef9-4ced-ae0d-9542afb9f65f",
+        "id": "a1146c8b-a4e5-43d7-879c-87de7f571c99",
         "name": "грамм",
         "conversion_factor": 1.0,
         "base_range": null
       }
     },
     {
-      "id": "ad3152c1-d90a-4bb3-8434-083123a08c85",
+      "id": "a72f6fab-89f1-4c1c-9ef6-a0ec931d15b8",
       "name": "Контейнер",
       "full_name": "Контейнер пищевой картонный для блинчиков",
       "group": {
-        "id": "e0a36209-60ba-4bbd-a8f0-1b707aeee1b0",
+        "id": "06e8a7bb-bf19-4ac5-9136-ae4d220511e9",
         "name": "Упаковка"
       },
       "range": {
-        "id": "7d4a63da-5aaa-42df-9366-4cc2fba48a6b",
+        "id": "646fac94-9227-4de4-a6e0-cf06de236978",
         "name": "шт",
         "conversion_factor": 1.0,
         "base_range": null
       }
     },
     {
-      "id": "02f14730-8418-44e9-ba4d-4128f0f52449",
+      "id": "9afb7bf0-2c45-4b09-83d7-bbb769b2d771",
       "name": "Блинчики",
       "full_name": "Блинчики классические (порция 2 шт.)",
       "group": {
-        "id": "a314a10b-d4d5-4d77-9137-e61055b393d2",
+        "id": "a06f7c92-67a3-4cfc-9797-321d77069033",
         "name": "Молочная продукция"
       },
       "range": {
-        "id": "7d4a63da-5aaa-42df-9366-4cc2fba48a6b",
+        "id": "646fac94-9227-4de4-a6e0-cf06de236978",
         "name": "шт",
         "conversion_factor": 1.0,
         "base_range": null
@@ -167,17 +167,17 @@
   ],
   "storages": [
     {
-      "id": "a2ee63e6-41ed-45d0-a98d-be670e17af27",
+      "id": "3c132788-8933-4d9a-ad6e-a6a7954db5d8",
       "name": "Главный склад"
     },
     {
-      "id": "61c9e74c-f839-41b6-926c-60c9f113d6f9",
+      "id": "debec7fa-d7f2-4e0e-967a-d175fe858a29",
       "name": "Холодильная камера"
     }
   ],
   "organizations": [
     {
-      "id": "1c98e544-f432-4965-bc93-ba79bb9f3e7c",
+      "id": "e9ba489c-c786-4428-849f-8d196cadbcfb",
       "name": "ООО Ромашка",
       "inn": "7701234567",
       "bic": "044525225",
@@ -187,18 +187,18 @@
   ],
   "recipes": [
     {
-      "id": "30ef28d5-680f-4815-85ec-69f4e69da06a",
+      "id": "5a177df1-846d-4039-9174-5933b8b3c646",
       "name": "Блинчики классические",
       "dish": {
-        "id": "02f14730-8418-44e9-ba4d-4128f0f52449",
+        "id": "9afb7bf0-2c45-4b09-83d7-bbb769b2d771",
         "name": "Блинчики",
         "full_name": "Блинчики классические (порция 2 шт.)",
         "group": {
-          "id": "a314a10b-d4d5-4d77-9137-e61055b393d2",
+          "id": "a06f7c92-67a3-4cfc-9797-321d77069033",
           "name": "Молочная продукция"
         },
         "range": {
-          "id": "7d4a63da-5aaa-42df-9366-4cc2fba48a6b",
+          "id": "646fac94-9227-4de4-a6e0-cf06de236978",
           "name": "шт",
           "conversion_factor": 1.0,
           "base_range": null
@@ -206,17 +206,17 @@
       },
       "rows": [
         {
-          "id": "85206ae8-d6eb-4bb6-ab83-62012455674c",
+          "id": "b60f237b-9628-474c-81d7-2ce83c8b32f7",
           "nomenclature": {
-            "id": "ddaa1e89-4851-4cd9-b4d9-ca93b3df470d",
+            "id": "cdb1682e-9984-495e-a0a0-b60c0fb3b5d2",
             "name": "Молоко 3.2%",
             "full_name": "Молоко пастеризованное 3.2%",
             "group": {
-              "id": "a314a10b-d4d5-4d77-9137-e61055b393d2",
+              "id": "a06f7c92-67a3-4cfc-9797-321d77069033",
               "name": "Молочная продукция"
             },
             "range": {
-              "id": "cda07de0-1ef9-4ced-ae0d-9542afb9f65f",
+              "id": "a1146c8b-a4e5-43d7-879c-87de7f571c99",
               "name": "грамм",
               "conversion_factor": 1.0,
               "base_range": null
@@ -228,17 +228,17 @@
           "net_weight": 100.0
         },
         {
-          "id": "b751cc7d-fa6f-4758-9183-8a8e63eb5d00",
+          "id": "536046a5-0c35-40e7-b179-8b5ddf882210",
           "nomenclature": {
-            "id": "83b9b9cc-d775-4bbf-b77c-fd3852d7bc9b",
+            "id": "9ef0ca74-dc58-4d58-b51f-e0b62f2d6c1a",
             "name": "Мука",
             "full_name": "Мука пшеничная в/с",
             "group": {
-              "id": "489a32e1-5158-434f-8e83-1a89051a4730",
+              "id": "7c808fe8-042a-4dd2-92eb-83db8ce6f4f1",
               "name": "Сырье"
             },
             "range": {
-              "id": "cda07de0-1ef9-4ced-ae0d-9542afb9f65f",
+              "id": "a1146c8b-a4e5-43d7-879c-87de7f571c99",
               "name": "грамм",
               "conversion_factor": 1.0,
               "base_range": null
@@ -250,17 +250,17 @@
           "net_weight": 50.0
         },
         {
-          "id": "f919a107-e61f-42b6-a12a-c976ebcd560f",
+          "id": "eef897cf-017d-4c85-8018-9fd85d10ce0c",
           "nomenclature": {
-            "id": "3cb8c804-38be-4e15-a8c9-a31371e0a523",
+            "id": "43b786bc-9d56-4254-b8ad-9302a04b9a34",
             "name": "Яйцо",
             "full_name": "Яйцо куриное",
             "group": {
-              "id": "489a32e1-5158-434f-8e83-1a89051a4730",
+              "id": "7c808fe8-042a-4dd2-92eb-83db8ce6f4f1",
               "name": "Сырье"
             },
             "range": {
-              "id": "7d4a63da-5aaa-42df-9366-4cc2fba48a6b",
+              "id": "646fac94-9227-4de4-a6e0-cf06de236978",
               "name": "шт",
               "conversion_factor": 1.0,
               "base_range": null
@@ -272,21 +272,21 @@
           "net_weight": 1.0
         },
         {
-          "id": "b58b8396-4364-4776-97f1-41dfe3a16700",
+          "id": "bf5ce5cf-3696-4508-b7af-9b686c204c78",
           "nomenclature": {
-            "id": "036c3792-d140-45ca-92de-4ae692ec43b2",
+            "id": "2f3a6aaf-bd7a-4d31-81d7-c56f998abb24",
             "name": "Сахар",
             "full_name": "Сахар белый ГОСТ",
             "group": {
-              "id": "489a32e1-5158-434f-8e83-1a89051a4730",
+              "id": "7c808fe8-042a-4dd2-92eb-83db8ce6f4f1",
               "name": "Сырье"
             },
             "range": {
-              "id": "3ac76c25-3bb7-4556-98f1-0a0ce7491362",
+              "id": "f50c3148-f377-4b76-ac6d-f58730a65338",
               "name": "кг",
               "conversion_factor": 1000.0,
               "base_range": {
-                "id": "cda07de0-1ef9-4ced-ae0d-9542afb9f65f",
+                "id": "a1146c8b-a4e5-43d7-879c-87de7f571c99",
                 "name": "грамм",
                 "conversion_factor": 1.0,
                 "base_range": null
@@ -299,17 +299,17 @@
           "net_weight": 10.0
         },
         {
-          "id": "d6ed60f6-ac2c-4094-bd6e-e17a4f813816",
+          "id": "92465f5f-3a4f-461f-b787-4cee663d2f2e",
           "nomenclature": {
-            "id": "654a7625-e61e-436f-9698-da27e852efe5",
+            "id": "42f6a072-4088-4e15-a636-e0ca0028767c",
             "name": "Соль",
             "full_name": "Соль поваренная",
             "group": {
-              "id": "489a32e1-5158-434f-8e83-1a89051a4730",
+              "id": "7c808fe8-042a-4dd2-92eb-83db8ce6f4f1",
               "name": "Сырье"
             },
             "range": {
-              "id": "cda07de0-1ef9-4ced-ae0d-9542afb9f65f",
+              "id": "a1146c8b-a4e5-43d7-879c-87de7f571c99",
               "name": "грамм",
               "conversion_factor": 1.0,
               "base_range": null
@@ -321,17 +321,17 @@
           "net_weight": 2.0
         },
         {
-          "id": "3583abf8-51f4-4701-8cbe-addc95401cdb",
+          "id": "251e1108-a732-4e7d-8483-6c9d63b0d7df",
           "nomenclature": {
-            "id": "b935517c-4f07-4540-a39c-3098b03fc5c1",
+            "id": "6cd97d23-23b0-48a9-bf65-dd994b9056bf",
             "name": "Масло растительное",
             "full_name": "Масло растительное рафинированное",
             "group": {
-              "id": "489a32e1-5158-434f-8e83-1a89051a4730",
+              "id": "7c808fe8-042a-4dd2-92eb-83db8ce6f4f1",
               "name": "Сырье"
             },
             "range": {
-              "id": "cda07de0-1ef9-4ced-ae0d-9542afb9f65f",
+              "id": "a1146c8b-a4e5-43d7-879c-87de7f571c99",
               "name": "грамм",
               "conversion_factor": 1.0,
               "base_range": null
@@ -343,17 +343,17 @@
           "net_weight": 10.0
         },
         {
-          "id": "28157fd4-f6cf-4573-a1ec-edc8bed72b43",
+          "id": "e10fcc81-19ed-4700-a90d-77f2430f6a3a",
           "nomenclature": {
-            "id": "ad3152c1-d90a-4bb3-8434-083123a08c85",
+            "id": "a72f6fab-89f1-4c1c-9ef6-a0ec931d15b8",
             "name": "Контейнер",
             "full_name": "Контейнер пищевой картонный для блинчиков",
             "group": {
-              "id": "e0a36209-60ba-4bbd-a8f0-1b707aeee1b0",
+              "id": "06e8a7bb-bf19-4ac5-9136-ae4d220511e9",
               "name": "Упаковка"
             },
             "range": {
-              "id": "7d4a63da-5aaa-42df-9366-4cc2fba48a6b",
+              "id": "646fac94-9227-4de4-a6e0-cf06de236978",
               "name": "шт",
               "conversion_factor": 1.0,
               "base_range": null
