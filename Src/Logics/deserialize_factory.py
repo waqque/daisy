@@ -1,6 +1,7 @@
+import inspect
 import json
 import os
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin, ForwardRef
 
 from Src.Core.abstract_deserialize_factory import abstract_deserialize_factory
 from Src.Core.abstract_model import base_model
@@ -15,117 +16,100 @@ from Src.Models.storage_model import storage_model
 
 
 class deserialize_factory(abstract_deserialize_factory):
-    # Фабрика, которая превращает словари и JSON обратно в объекты моделей
+    # Фабрика создания объектов моделей из словарей и JSON файлов
 
     _instances: Dict[str, base_model]
-    _handlers: Dict[Any, Callable[[dict], Any]]
-    _names_map: Dict[str, Any]
 
-    # Таблица сигнатур: какие характерные поля какому классу принадлежат
-    _signatures = [
-        ({"inn", "bic", "account"}, organization_model),
-        ({"dish", "rows"}, recipe_model),
-        ({"gross_weight", "net_weight"}, recipe_row_model),
-        ({"full_name"}, nomenclature_model),
-        ({"conversion_factor", "base_range"}, range_model),
+    # Список всех моделей программы
+    _models: List[Type[base_model]] = [
+        organization_model,
+        recipe_model,
+        recipe_row_model,
+        nomenclature_model,
+        range_model,
+        storage_model,
+        nomenclature_group_model,
     ]
 
+    # Какие модели лежат в каких секциях хранилища
+    _storage_sections: Dict[str, Type[base_model]] = {
+        "ranges": range_model,
+        "groups": nomenclature_group_model,
+        "nomenclatures": nomenclature_model,
+        "storages": storage_model,
+        "organizations": organization_model,
+        "recipes": recipe_model,
+    }
+
     def __init__(self) -> None:
-        # Словарь созданных объектов по их id (чтобы не создавать дубликаты одного и того же объекта)
+        # Словарь созданных объектов по их id (чтобы не дублировать одинаковые объекты в памяти)
         self._instances = {}
 
-        # Таблица соответствия: какому типу модели какая функция создания соответствует
-        self._handlers = {
-            range_model: self._create_range,
-            nomenclature_group_model: self._create_group,
-            storage_model: self._create_storage,
-            organization_model: self._create_organization,
-            nomenclature_model: self._create_nomenclature,
-            recipe_row_model: self._create_recipe_row,
-            recipe_model: self._create_recipe,
-            "storage_dict": self._create_storage_dict,
-        }
-
-        # Таблица соответствия строковых названий секций типам моделей
-        self._names_map = {
-            "ranges": range_model,
-            "groups": nomenclature_group_model,
-            "nomenclatures": nomenclature_model,
-            "storages": storage_model,
-            "organizations": organization_model,
-            "recipes": recipe_model,
-            "recipe_rows": recipe_row_model,
-            "storage_dict": "storage_dict",
-        }
-
     def clear_cache(self) -> None:
-        # Очистить память ранее созданных объектов
+        # Очистить память созданных объектов
         self._instances.clear()
 
     @property
     def instances(self) -> Dict[str, base_model]:
-        # Посмотреть все сохраненные в памяти объекты
+        # Получить копию словаря созданных объектов
         return dict(self._instances)
 
     def deserialize(self, data: Any, target_type: Optional[Any] = None) -> Any:
-        # Главная точка входа: разбирает входные данные любого вида (словарь, список, строка, файл)
+        # Главный метод: принимает словарь, список, JSON строку или путь к файлу
         if data is None:
             return None
 
-        # Если нам уже передали готовую модель, просто возвращаем ее
+        # Если нам уже передали готовый объект, просто возвращаем его
         if isinstance(data, base_model):
             return data
 
-        # Если передали строку: это либо путь к файлу на диске, либо JSON строка
+        # Если передана строка: читаем файл с диска или разбираем JSON строку
         if isinstance(data, str):
             clean_str = data.strip()
             if os.path.isfile(clean_str):
                 return self.deserialize_file(clean_str, target_type)
             try:
-                return self.deserialize(json.loads(clean_str), target_type)
+                parsed_json = json.loads(clean_str)
+                return self.deserialize(parsed_json, target_type)
             except Exception as exc:
                 raise argument_exception(
-                    "data", f"Не удалось прочитать JSON строку: {exc}"
+                    "data", f"Не удалось прочитать JSON-строку: {exc}"
                 )
 
-        # Если передан список или кортеж — рекурсивно превращаем каждый элемент в модель
+        # Если передан список: превращаем каждый элемент списка в объект
         if isinstance(data, (list, tuple)):
             return [self.deserialize(item, target_type) for item in data]
 
         if not isinstance(data, dict):
             raise argument_exception(
                 "data",
-                f"Ожидался словарь или JSON, но получен {type(data).__name__}.",
+                f"Входные данные должны быть словарем или JSON, получен {type(data).__name__}.",
             )
 
-        # Если объект с таким id мы уже создавали раньше, возвращаем его из памяти (сохраняем одну ссылку)
+        # Если объект с таким id уже создавался раньше, возвращаем его из памяти
         item_id = data.get("id")
         if item_id and isinstance(item_id, str) and item_id in self._instances:
             return self._instances[item_id]
 
-        # Определяем, в какую именно модель нужно превратить этот словарь
-        resolved_type = self._resolve_target_type(data, target_type)
+        # Если переданы данные всего хранилища, загружаем все секции
+        if target_type == "storage_dict" or (
+            target_type is None and len(set(data.keys()) & set(self._storage_sections.keys())) >= 2
+        ):
+            return self._deserialize_storage_dict(data)
 
-        # Находим нужную функцию создания из таблицы
-        handler = self._handlers.get(resolved_type)
-        if handler is None:
+        # Если класс модели не указан, определяем его по свойствам объекта
+        model_cls = self._resolve_model_class(data, target_type)
+        if model_cls is None:
             raise argument_exception(
                 "target_type",
-                f"Не удалось понять, в какую модель превратить словарь с ключами: {list(data.keys())}",
+                f"Не удалось определить класс модели для словаря: {list(data.keys())}",
             )
 
-        # Создаем объект модели
-        model = handler(data)
-
-        # Если у объекта есть id, восстанавливаем его и запоминаем объект в памяти
-        if item_id and isinstance(model, base_model):
-            model.id = str(item_id)
-            self._instances[model.id] = model
-
-        return model
+        # Создаем и заполняем объект модели
+        return self._deserialize_model(data, model_cls)
 
     def deserialize_file(self, file_path: str, target_type: Optional[Any] = None) -> Any:
-        # Читаем JSON файл с диска и десериализуем его содержимое
+        # Читаем JSON файл с диска
         if not isinstance(file_path, str) or not file_path.strip():
             raise argument_exception("file_path", "Путь к файлу должен быть непустой строкой.")
 
@@ -138,15 +122,14 @@ class deserialize_factory(abstract_deserialize_factory):
         return self.deserialize(data, target_type)
 
     def deserialize_storage(self, data: Any, target_storage: Optional[Any] = None) -> Any:
-        # Загрузка полного хранилища (все 6 секций: единицы, группы, номенклатура, склады, организации, рецепты)
+        # Загружаем все данные и при необходимости заполняем хранилище
         storage_dict = self.deserialize(data, target_type="storage_dict")
 
-        # Если передали конкретный менеджер хранилища (например, storage_manager), наполняем его
         if target_storage is not None:
             if hasattr(target_storage, "clear"):
                 target_storage.clear()
 
-            # Добавляем данные в строгом порядке, чтобы сначала появились единицы и группы, а потом рецепты
+            # Добавляем данные в порядке: сначала единицы и группы, потом рецепты
             for sec_key in ["ranges", "groups", "nomenclatures", "storages", "organizations", "recipes"]:
                 for entity in storage_dict.get(sec_key, []):
                     target_storage.add_entity(sec_key, entity)
@@ -155,93 +138,119 @@ class deserialize_factory(abstract_deserialize_factory):
 
         return storage_dict
 
-    def _resolve_target_type(self, data: dict, target_type: Optional[Any]) -> Any:
-        # Понять, в какую модель нужно превратить словарь: по явному указанию или по таблице сигнатур
+    def _resolve_model_class(self, data: dict, target_type: Optional[Any]) -> Optional[Type[base_model]]:
+        # Находим подходящий класс модели
         if target_type is not None:
             if isinstance(target_type, str):
-                return self._names_map.get(target_type.strip().lower(), target_type)
-            return target_type
+                normalized = target_type.strip().lower()
+                # Поиск по имени секции хранилища (например, "ranges")
+                if normalized in self._storage_sections:
+                    return self._storage_sections[normalized]
+                # Поиск по имени класса (например, "range_model")
+                for m in self._models:
+                    if m.__name__.lower() == normalized:
+                        return m
+            elif inspect.isclass(target_type) and issubclass(target_type, base_model):
+                return target_type
 
-        keys = set(data.keys())
+        # Сравниваем ключи словаря со свойствами моделей и берем модель с наибольшим совпадением
+        data_keys = set(data.keys())
 
-        # Если в словаре есть секции хранилища (например, ranges и nomenclatures) — это всё хранилище
-        if len(keys & {"ranges", "groups", "nomenclatures", "storages", "organizations", "recipes"}) >= 2:
-            return "storage_dict"
+        def get_model_props(cls: Type[base_model]) -> set:
+            return {
+                name for name, val in inspect.getmembers(cls)
+                if isinstance(val, property) and name not in ("id", "unique_code")
+            }
 
-        # Проверяем совпадение по таблице характерных полей без каскада if
-        for marker_keys, model_cls in self._signatures:
-            if marker_keys & keys:
-                return model_cls
-
-        # Если в словаре есть только name — по умолчанию считаем группой
-        return nomenclature_group_model if "name" in keys else None
-
-    def _create_range(self, data: dict) -> range_model:
-        # Создание единицы измерения (рекурсивно восстанавливаем базовую единицу, если она есть)
-        base = self.deserialize(data.get("base_range"), range_model)
-        return range_model(
-            name=data.get("name", ""),
-            conversion_factor=float(data.get("conversion_factor", 1.0)),
-            base_range=base,
+        best_model = max(
+            self._models,
+            key=lambda m: (len(data_keys & get_model_props(m)), len(get_model_props(m)))
         )
 
-    def _create_group(self, data: dict) -> nomenclature_group_model:
-        # Создание группы номенклатуры (например, "Сырье" или "Упаковка")
-        return nomenclature_group_model(name=data.get("name", ""))
+        if not (data_keys & get_model_props(best_model)):
+            return None
 
-    def _create_storage(self, data: dict) -> storage_model:
-        # Создание склада (например, "Основной склад")
-        return storage_model(name=data.get("name", ""))
+        return best_model
 
-    def _create_organization(self, data: dict) -> organization_model:
-        # Создание организации со всеми реквизитами
-        return organization_model(
-            name=data.get("name", ""),
-            inn=data.get("inn", ""),
-            bic=data.get("bic", ""),
-            account=data.get("account", ""),
-            ownership_form=data.get("ownership_form", ""),
-        )
+    def _deserialize_model(self, data: dict, model_cls: Type[base_model]) -> base_model:
+        # Универсальное создание и заполнение объекта любой модели
+        instance = model_cls.__new__(model_cls)
+        base_model.__init__(instance)
 
-    def _create_nomenclature(self, data: dict) -> nomenclature_model:
-        # Создание товара/ингредиента (рекурсивно восстанавливаем связанную группу и единицу измерения)
-        group = self.deserialize(data.get("group"), nomenclature_group_model)
-        range_unit = self.deserialize(data.get("range"), range_model)
-        return nomenclature_model(
-            name=data.get("name", ""),
-            full_name=data.get("full_name", data.get("name", "")),
-            group=group,
-            range_unit=range_unit,
-        )
+        # Для рецепта создаем пустой список строк ингредиентов
+        if issubclass(model_cls, recipe_model) or model_cls is recipe_model:
+            setattr(instance, "_recipe_model__rows", [])
 
-    def _create_recipe_row(self, data: dict) -> recipe_row_model:
-        # Создание строки рецепта (рекурсивно восстанавливаем ингредиент и возможный вложенный полуфабрикат)
-        nom = self.deserialize(data.get("nomenclature"), nomenclature_model)
-        nested = self.deserialize(data.get("nested_recipe"), recipe_model)
-        return recipe_row_model(
-            nomenclature=nom,
-            gross_weight=float(data.get("gross_weight", 0.0)),
-            net_weight=float(data.get("net_weight", 0.0)),
-            nested_recipe=nested,
-        )
+        # Запоминаем id и сохраняем объект в памяти
+        item_id = data.get("id")
+        if item_id:
+            instance.id = str(item_id)
+            self._instances[instance.id] = instance
 
-    def _create_recipe(self, data: dict) -> recipe_model:
-        # Создание рецепта (рекурсивно восстанавливаем готовое блюдо и все строки ингредиентов)
-        dish = self.deserialize(data.get("dish"), nomenclature_model)
-        rows = [self.deserialize(r, recipe_row_model) for r in data.get("rows", [])]
-        return recipe_model(name=data.get("name", ""), dish=dish, rows=rows)
+        # Проходим по всем полям словаря и записываем их в свойства объекта
+        for key, val in data.items():
+            if key in ("id", "unique_code"):
+                continue
 
-    def _create_storage_dict(self, data: dict) -> Dict[str, List[base_model]]:
-        # Создание словаря со всеми 6 секциями хранилища
-        sections = {
-            "ranges": range_model,
-            "groups": nomenclature_group_model,
-            "nomenclatures": nomenclature_model,
-            "storages": storage_model,
-            "organizations": organization_model,
-            "recipes": recipe_model,
-        }
-        return {
-            sec: [self.deserialize(item, model_cls) for item in data.get(sec, [])]
-            for sec, model_cls in sections.items()
-        }
+            # Проверяем, есть ли такое свойство у класса
+            prop = getattr(model_cls, key, None)
+            if not isinstance(prop, property):
+                continue
+
+            if val is None:
+                if prop.fset is not None:
+                    setattr(instance, key, None)
+            elif isinstance(val, dict):
+                # Для вложенного объекта узнаем тип из описания свойства и создаем его
+                nested_cls = self._extract_type_from_property(prop, model_cls)
+                nested_obj = self.deserialize(val, target_type=nested_cls)
+                if prop.fset is not None:
+                    setattr(instance, key, nested_obj)
+            elif isinstance(val, (list, tuple)):
+                # Для строк рецепта создаем каждый ингредиент и добавляем через add_row
+                if hasattr(instance, "add_row"):
+                    for item in val:
+                        row_obj = self.deserialize(item, target_type=recipe_row_model)
+                        instance.add_row(row_obj)
+            else:
+                # Для простых значений (числа, строки) просто записываем значение в свойство
+                if prop.fset is not None:
+                    setattr(instance, key, val)
+
+        return instance
+
+    def _extract_type_from_property(self, prop: property, owner_cls: Type[base_model]) -> Optional[Type[base_model]]:
+        # Узнаем тип вложенной модели из подсказки типа в геттере свойства
+        if not prop.fget:
+            return None
+
+        ret = prop.fget.__annotations__.get("return")
+        if ret is None:
+            return None
+
+        # Разворачиваем Optional[...]
+        if get_origin(ret) is Union:
+            args = [a for a in get_args(ret) if a is not type(None)]
+            ret = args[0] if args else None
+
+        # Разворачиваем строковые ссылки ForwardRef
+        if isinstance(ret, (str, ForwardRef)):
+            ref_name = ret.__forward_arg__ if isinstance(ret, ForwardRef) else ret
+            for m in self._models:
+                if m.__name__ == ref_name:
+                    return m
+            if ref_name == owner_cls.__name__:
+                return owner_cls
+
+        if inspect.isclass(ret) and issubclass(ret, base_model):
+            return ret
+
+        return None
+
+    def _deserialize_storage_dict(self, data: dict) -> Dict[str, List[base_model]]:
+        # Загружаем каждую секцию хранилища
+        result: Dict[str, List[base_model]] = {}
+        for sec_key, model_cls in self._storage_sections.items():
+            items = data.get(sec_key, [])
+            result[sec_key] = [self.deserialize(item, target_type=model_cls) for item in items]
+        return result
