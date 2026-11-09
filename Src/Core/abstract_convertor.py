@@ -51,4 +51,9 @@ class abstract_convertor(ABC):
                     except Exception:
                         pass
 
+        # Для наследников base_model всегда включаем имя типа модели
+        from Src.Core.abstract_model import base_model
+        if isinstance(item, base_model) and "type" not in fields:
+            fields["type"] = item.type
+
         return fields

@@ -7,10 +7,12 @@ class base_model(ABC):
   # Базовый абстрактный класс для всех сущностей
   __name: str = ""
   __id: str = ""
+  __type: str = ""
 
   def __init__(self) -> None:
     # При создании сразу генерируем уникальный строковый UUID
     self.__id = str(uuid.uuid4())
+    self.__type = type(self).__name__
 
   @property
   def id(self) -> str:
@@ -32,6 +34,11 @@ class base_model(ABC):
       )
 
     self.__id = normalized_value
+
+  @property
+  def type(self) -> str:
+    # Тип модели
+    return type(self).__name__
 
   @property
   def unique_code(self) -> str:
@@ -73,4 +80,4 @@ class base_model(ABC):
 
   def __hash__(self) -> int:
     # Хеширование модели по уникальному идентификатору
-    return hash(self.id)
+    return hash(self.id)
