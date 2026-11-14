@@ -3,6 +3,7 @@ import os
 from typing import Optional
 from Src.Core.abstract_manager import abstract_manager
 from Src.Core.exceptions import argument_exception, operation_exception
+from Src.Logics.deserialize_factory import deserialize_factory
 from Src.Models.organization_model import organization_model
 from Src.Models.settings_model import settings_model
 
@@ -101,13 +102,20 @@ class settings_manager(abstract_manager):
         ownership_form = data.get("ownership_form", self.__default_data["ownership_form"])
         response_format = data.get("response_format", self.__default_data["response_format"])
 
-        org = organization_model(
-            name=name,
-            inn=inn,
-            bic=bic,
-            account=account,
-            ownership_form=ownership_form,
-        )
+        # Общий механизм десериализации данных для создания модели организации
+        factory = deserialize_factory()
+        org_data = data.get("organization")
+        if isinstance(org_data, dict):
+            org = factory.deserialize(org_data, target_type=organization_model)
+        else:
+            org_fields = {
+                "name": name,
+                "inn": inn,
+                "bic": bic,
+                "account": account,
+                "ownership_form": ownership_form,
+            }
+            org = factory.deserialize(org_fields, target_type=organization_model)
 
         model = settings_model()
         model.organization = org

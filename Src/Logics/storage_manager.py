@@ -225,4 +225,120 @@ class storage_manager(abstract_manager):
             ):
                 return item, None, 200
 
-        return None, f"Сущность типа '{entity_type}' с кодом '{entity_code}' не найдена.", 404
+        return None, f"Сущность типа '{entity_type}' с кодом '{entity_code}' не найдена.", 404
+
+    def get_dependencies(self, entity: base_model) -> list:
+        # Поиск всех доменных сущностей в хранилище, которые ссылаются на данную сущность
+        if not isinstance(entity, base_model):
+            return []
+
+        dependencies = []
+        target_id = entity.id
+
+        # 1. Проверяем единицы измерения (ranges) - на них могут ссылаться другие ranges (base_range)
+        for r in self.__data.get("ranges", []):
+            if r is not entity and r.base_range is not None and r.base_range.id == target_id:
+                dependencies.append(r)
+
+        # 2. Проверяем номенклатуру (nomenclatures) - ссылается на groups и ranges
+        for nom in self.__data.get("nomenclatures", []):
+            if nom is not entity:
+                if nom.group is not None and nom.group.id == target_id:
+                    dependencies.append(nom)
+                if nom.range is not None and nom.range.id == target_id:
+                    dependencies.append(nom)
+
+        # 3. Проверяем рецепты (recipes) - ссылаются на nomenclature (dish) и в строках на nomenclature и nested_recipe
+        for rec in self.__data.get("recipes", []):
+            if rec is not entity:
+                if rec.dish is not None and rec.dish.id == target_id:
+                    dependencies.append(rec)
+                for row in rec.rows:
+                    if row.nomenclature is not None and row.nomenclature.id == target_id:
+                        dependencies.append(rec)
+                    if row.nested_recipe is not None and row.nested_recipe.id == target_id:
+                        dependencies.append(rec)
+
+        return dependencies
+
+    def delete_entity(self, key_or_type: str, code_or_id: str) -> None:
+        # Удаление сущности с предварительной проверкой целостности и связей
+        entity, err_msg, status_code = self.get_entity(key_or_type, code_or_id)
+        if err_msg or entity is None:
+            raise operation_exception(f"Сущность не найдена: {err_msg}")
+
+        norm_type = str(key_or_type).lower().strip()
+        key = self.__type_aliases.get(norm_type)
+        if not key or key not in self.__data:
+            raise operation_exception(f"Неподдерживаемый тип сущности: {key_or_type}")
+
+        # Проверка связности: запрещено удалять сущность, если на нее ссылаются другие объекты
+        deps = self.get_dependencies(entity)
+        if deps:
+            dep_names = ", ".join(f"'{d.name}' ({d.type})" for d in deps)
+            raise operation_exception(
+                f"Невозможно удалить сущность '{entity.name}' ({entity.type}), так как на нее ссылаются: {dep_names}."
+            )
+
+        self.__data[key].remove(entity)
+
+    def update_entity(self, key_or_type: str, code_or_id: str, new_entity: base_model) -> None:
+        # Обновление сущности с контролем целостности, связей и неизменности уникального кода
+        entity, err_msg, status_code = self.get_entity(key_or_type, code_or_id)
+        if err_msg or entity is None:
+            raise operation_exception(f"Сущность не найдена: {err_msg}")
+
+        norm_type = str(key_or_type).lower().strip()
+        key = self.__type_aliases.get(norm_type)
+        if not key or key not in self.__data:
+            raise operation_exception(f"Неподдерживаемый тип сущности: {key_or_type}")
+
+        expected_type = self.__allowed_types[key]
+        if not isinstance(new_entity, expected_type):
+            raise argument_exception(
+                "new_entity",
+                f"Новый объект должен иметь тип {expected_type.__name__}, получен {type(new_entity).__name__}."
+            )
+
+        deps = self.get_dependencies(entity)
+        # Если сущность связана с другими, запрещено менять её уникальный код (id)
+        if new_entity.id != entity.id:
+            if deps:
+                dep_names = ", ".join(f"'{d.name}' ({d.type})" for d in deps)
+                raise operation_exception(
+                    f"Запрещено изменять код (id) сущности '{entity.name}', так как она связана с: {dep_names}."
+                )
+
+        # Проверка уникальности имени среди остальных объектов коллекции
+        for item in self.__data[key]:
+            if item is not entity:
+                if item.name.strip().lower() == new_entity.name.strip().lower():
+                    raise operation_exception(
+                        f"Элемент с наименованием '{new_entity.name}' уже существует в коллекции '{key}'."
+                    )
+                if item.id == new_entity.id:
+                    raise operation_exception(
+                        f"Элемент с идентификатором '{new_entity.id}' уже существует в коллекции '{key}'."
+                    )
+
+        # Замена элемента в коллекции
+        idx = self.__data[key].index(entity)
+        self.__data[key][idx] = new_entity
+
+        # Обновление ссылок в зависимых объектах для сохранения консистентности графа объектов
+        for r in self.__data.get("ranges", []):
+            if r.base_range is not None and r.base_range.id == new_entity.id:
+                r.base_range = new_entity
+        for nom in self.__data.get("nomenclatures", []):
+            if nom.group is not None and nom.group.id == new_entity.id:
+                nom.group = new_entity
+            if nom.range is not None and nom.range.id == new_entity.id:
+                nom.range = new_entity
+        for rec in self.__data.get("recipes", []):
+            if rec.dish is not None and rec.dish.id == new_entity.id:
+                rec.dish = new_entity
+            for row in rec.rows:
+                if row.nomenclature is not None and row.nomenclature.id == new_entity.id:
+                    row.nomenclature = new_entity
+                if row.nested_recipe is not None and row.nested_recipe.id == new_entity.id:
+                    row.nested_recipe = new_entity

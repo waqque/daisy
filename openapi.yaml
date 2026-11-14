@@ -1,0 +1,313 @@
+openapi: 3.0.0
+info:
+  title: Main API
+  version: "1.0"
+  description: REST API сети ресторанов "ООО <Ромашка>"
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /api/reports/formats:
+    get:
+      summary: Получить список всех доступных форматов для построения отчетов
+      description: Возвращает список поддерживаемых форматов отчетов в формате JSON.
+      operationId: main.get_report_formats
+      responses:
+        '200':
+          description: Список доступных форматов отчетов.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+              example: ["CSV", "MARKDOWN", "XML", "TXT", "HTML"]
+
+  /api/entities:
+    get:
+      summary: Получить список типов доменных сущностей
+      description: Возвращает список всех зарегистрированных типов доменных сущностей в хранилище.
+      operationId: main.get_entities
+      responses:
+        '200':
+          description: Список типов сущностей.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+              example: ["ranges", "groups", "nomenclatures", "storages", "organizations", "recipes"]
+
+  /api/entities/{entity_type}:
+    get:
+      summary: Получить список всех сущностей указанного типа
+      description: Возвращает список объектов доменных сущностей заданного типа.
+      operationId: main.get_entities_by_type
+      parameters:
+        - name: entity_type
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Тип сущности (например, ranges, groups, nomenclatures, storages, organizations, recipes).
+      responses:
+        '200':
+          description: Список сущностей указанного типа.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '400':
+          description: Неподдерживаемый тип сущности.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+    post:
+      summary: Добавить новую доменную сущность
+      description: Создает новую доменную сущность указанного типа с проверкой корректности.
+      operationId: main.create_entity
+      parameters:
+        - name: entity_type
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Тип создаваемой сущности.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Сущность успешно создана.
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Ошибка валидации или бизнес-правил.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /api/entities/{entity_type}/{entity_id}:
+    get:
+      summary: Получить доменную сущность по идентификатору
+      description: Возвращает данные конкретной сущности по типу и коду/идентификатору.
+      operationId: main.get_entity_by_id
+      parameters:
+        - name: entity_type
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Тип сущности.
+        - name: entity_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Уникальный код или идентификатор сущности.
+      responses:
+        '200':
+          description: Данные сущности.
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Неподдерживаемый тип сущности.
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: Сущность не найдена.
+          content:
+            application/json:
+              schema:
+                type: object
+    put:
+      summary: Изменить доменную сущность
+      description: Обновляет данные сущности с проверкой связности (запрещено менять код, если сущность связана с другой).
+      operationId: main.update_entity
+      parameters:
+        - name: entity_type
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Тип сущности.
+        - name: entity_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор обновляемой сущности.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Сущность успешно обновлена.
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Ошибка обновления, валидации или нарушение связности.
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: Сущность не найдена.
+          content:
+            application/json:
+              schema:
+                type: object
+    delete:
+      summary: Удалить доменную сущность
+      description: Удаляет сущность (запрещено удалять, если сущность связана с другой доменной сущностью).
+      operationId: main.delete_entity
+      parameters:
+        - name: entity_type
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Тип сущности.
+        - name: entity_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор удаляемой сущности.
+      responses:
+        '200':
+          description: Сущность успешно удалена.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: boolean
+        '400':
+          description: Запрещено удалять связанную сущность или некорректный запрос.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '404':
+          description: Сущность не найдена.
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/get_report:
+    get:
+      summary: Сформировать и получить текстовый отчет по технологической карте
+      description: Формирует отчет по указанному или первому рецепту в хранилище в заданном формате.
+      operationId: main.get_report
+      parameters:
+        - name: recipe
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Наименование технологической карты.
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Формат отчета (TXT, CSV, HTML, XML, MARKDOWN).
+      responses:
+        '200':
+          description: Сформированный отчет.
+        '400':
+          description: Неподдерживаемый формат отчета.
+        '404':
+          description: Рецепты не найдены в хранилище.
+
+  /api/report/{entity_type}/{entity_code}:
+    get:
+      summary: Сформировать отчет в указанном формате для типа и кода сущности
+      description: Формирует отчет для конкретной сущности в указанном формате.
+      operationId: main.get_report_by_format
+      parameters:
+        - name: entity_type
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Тип доменной сущности.
+        - name: entity_code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Уникальный код или наименование сущности.
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Формат отчета (TXT, CSV, HTML, XML, MARKDOWN).
+      responses:
+        '200':
+          description: Сформированный отчет.
+        '400':
+          description: Неподдерживаемый формат или тип сущности.
+        '404':
+          description: Сущность не найдена.
+
+  /api/report/default/{entity_type}/{entity_code}:
+    get:
+      summary: Сформировать отчет для типа и кода сущности в формате по умолчанию
+      description: Формирует отчет для конкретной сущности с использованием формата из настроек системы.
+      operationId: main.get_report_default
+      parameters:
+        - name: entity_type
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Тип доменной сущности.
+        - name: entity_code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Уникальный код или наименование сущности.
+      responses:
+        '200':
+          description: Сформированный отчет.
+        '400':
+          description: Неподдерживаемый тип сущности.
+        '404':
+          description: Сущность не найдена.
+
