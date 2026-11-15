@@ -11,8 +11,14 @@ class settings_model:
     __response_format: report_type_enum = report_type_enum.TXT
 
     def __init__(self) -> None:
-        # По умолчанию модель пустая 
-        self.__organization = None
+        # Инициализация модели настроек значениями по умолчанию
+        self.__organization = organization_model.create(
+            name="ООО Ромашка",
+            inn="7701234567",
+            bic="044525225",
+            account="40702810938000012345",
+            ownership_form="ООО",
+        )
         self.__is_first_start = True
         self.__response_format = report_type_enum.TXT
 
@@ -78,22 +84,47 @@ class settings_model:
         # Наименование организации из настроек
         return self.__organization.name if self.__organization is not None else ""
 
+    @name.setter
+    def name(self, value: str) -> None:
+        # Установка наименования организации в настройках
+        self.__organization.name = value
+
     @property
     def inn(self) -> str:
         # ИНН организации из настроек
         return self.__organization.inn if self.__organization is not None else ""
+
+    @inn.setter
+    def inn(self, value: str) -> None:
+        # Установка ИНН организации в настройках
+        self.__organization.inn = value
 
     @property
     def bic(self) -> str:
         # БИК банка организации из настроек
         return self.__organization.bic if self.__organization is not None else ""
 
+    @bic.setter
+    def bic(self, value: str) -> None:
+        # Установка БИК банка организации в настройках
+        self.__organization.bic = value
+
     @property
     def account(self) -> str:
         # Расчетный счет организации из настроек
         return self.__organization.account if self.__organization is not None else ""
 
+    @account.setter
+    def account(self, value: str) -> None:
+        # Установка расчетного счета организации в настройках
+        self.__organization.account = value
+
     @property
     def ownership_form(self) -> str:
         # Форма собственности организации из настроек
         return self.__organization.ownership_form if self.__organization is not None else ""
+
+    @ownership_form.setter
+    def ownership_form(self, value: str) -> None:
+        # Установка формы собственности организации в настройках
+        self.__organization.ownership_form = value

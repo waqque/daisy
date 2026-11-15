@@ -360,7 +360,7 @@ def test_storage_manager_get_by_code_and_name_success():
     assert found_by_code.unique_code == recipe.unique_code
 
     # Поиск по наименованию
-    found_by_name = manager.get_by_code("рецепт", recipe.name)
+    found_by_name = manager.get_by_code("recipes", recipe.name)
     assert found_by_name is not None
     assert found_by_name.name == recipe.name
 
@@ -368,7 +368,7 @@ def test_storage_manager_get_by_code_and_name_success():
     assert manager.get_by_code("recipe", "unknown_123") is None
     assert manager.get_by_code("invalid_type", "123") is None
     assert manager.is_valid_type("recipe") is True
-    assert manager.is_valid_type("номенклатура") is True
+    assert manager.is_valid_type("nomenclature_model") is True
     assert manager.is_valid_type("invalid_type") is False
 
 

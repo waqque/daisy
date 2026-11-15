@@ -19,14 +19,18 @@ class deserialize_factory(abstract_deserialize_factory):
         self._instances = {}
 
     @classmethod
-    def _get_models(cls) -> Dict[str, Type[base_model]]:
-        # Сбор всех классов моделей через рефлексию (поиск наследников base_model)
+    def _get_models(cls) -> Dict[str, Type]:
+        # Сбор всех классов моделей через рефлексию
         models_dir = os.path.join(os.path.dirname(__file__), "..", "Models")
+        discovered: Dict[str, Type] = {}
         if os.path.exists(models_dir):
             for file_name in os.listdir(models_dir):
                 if file_name.endswith(".py") and not file_name.startswith("__"):
                     module_name = file_name[:-3]
-                    importlib.import_module(f"Src.Models.{module_name}")
+                    mod = importlib.import_module(f"Src.Models.{module_name}")
+                    for attr_name, attr_val in inspect.getmembers(mod, inspect.isclass):
+                        if attr_val.__module__ == mod.__name__ and attr_name.endswith("_model"):
+                            discovered[attr_name] = attr_val
 
         def get_all_subclasses(c: Type[base_model]) -> set:
             res = set(c.__subclasses__())
@@ -34,7 +38,10 @@ class deserialize_factory(abstract_deserialize_factory):
                 res.update(get_all_subclasses(sc))
             return res
 
-        return {m.__name__: m for m in get_all_subclasses(base_model)}
+        for m in get_all_subclasses(base_model):
+            discovered[m.__name__] = m
+
+        return discovered
 
     @property
     def models(self) -> Dict[str, Type[base_model]]:
@@ -141,13 +148,15 @@ class deserialize_factory(abstract_deserialize_factory):
 
         return storage_dict
 
-    def _resolve_model_class(self, data: dict, target_type: Optional[Any]) -> Optional[Type[base_model]]:
+    def _resolve_model_class(self, data: dict, target_type: Optional[Any]) -> Optional[Type]:
         # Определение класса модели по переданному типу или по полю type из словаря
         models = self.models
 
         # 1. По явно переданному типу целевой модели
         if target_type is not None:
-            if inspect.isclass(target_type) and issubclass(target_type, base_model):
+            if inspect.isclass(target_type) and (
+                issubclass(target_type, base_model) or target_type.__name__ in models
+            ):
                 return target_type
             if isinstance(target_type, str):
                 normalized = target_type.strip().lower()
@@ -166,10 +175,13 @@ class deserialize_factory(abstract_deserialize_factory):
 
         return None
 
-    def _deserialize_model(self, data: dict, model_cls: Type[base_model]) -> base_model:
+    def _deserialize_model(self, data: dict, model_cls: Type) -> Any:
         # Универсальное создание и заполнение объекта любой модели
-        instance = model_cls.__new__(model_cls)
-        base_model.__init__(instance)
+        if issubclass(model_cls, base_model):
+            instance = model_cls.__new__(model_cls)
+            base_model.__init__(instance)
+        else:
+            instance = model_cls()
 
         # Инициализация списка строк для рецепта
         if hasattr(model_cls, "add_row"):
@@ -177,7 +189,7 @@ class deserialize_factory(abstract_deserialize_factory):
 
         # Запоминаем id и регистрируем в кэше
         item_id = data.get("id")
-        if item_id:
+        if item_id and issubclass(model_cls, base_model):
             instance.id = str(item_id)
             self._instances[instance.id] = instance
 

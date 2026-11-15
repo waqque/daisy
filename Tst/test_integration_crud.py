@@ -1,6 +1,6 @@
 import json
 import pytest
-from main import api, storage
+from main import api, service, storage
 from Src.Dtos.report_type_dto import report_type_enum
 from Src.Models.nomenclature_group_model import nomenclature_group_model
 from Src.Models.nomenclature_model import nomenclature_model
@@ -189,7 +189,7 @@ def test_success_update_entity(client):
 def test_error_update_entity_code_when_referenced(client):
     # Подготовка: группа "Сырье" связана с номенклатурой ("Сахар", "Мука" и т.д.)
     raw_group = storage.groups[0]
-    assert len(storage.get_dependencies(raw_group)) > 0
+    assert len(service.get_dependencies(raw_group)) > 0
 
     invalid_update_payload = {
         "name": "Сырье с измененным кодом",
@@ -240,7 +240,7 @@ def test_success_update_entity_code_when_not_referenced(client):
 def test_error_delete_entity_when_referenced(client):
     # Подготовка: единица измерения "грамм" связана с номенклатурой ("Мука", "Молоко") и кг (base_range)
     gram_range = next(r for r in storage.ranges if r.name == "грамм")
-    assert len(storage.get_dependencies(gram_range)) > 0
+    assert len(service.get_dependencies(gram_range)) > 0
 
     # Действие: попытка удалить связанную единицу измерения
     response = client.delete(f"/api/entities/ranges/{gram_range.id}")

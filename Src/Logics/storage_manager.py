@@ -162,156 +162,21 @@ class storage_manager(abstract_manager):
         # Копия списка технологических карт (рецептов)
         return list(self.__data["recipes"])
 
-    __type_aliases = {
-        "nomenclatures": "nomenclatures",
-        "nomenclature": "nomenclatures",
-        "номенклатура": "nomenclatures",
-        "ranges": "ranges",
-        "range": "ranges",
-        "единица измерения": "ranges",
-        "единица_измерения": "ranges",
-        "recipes": "recipes",
-        "recipe": "recipes",
-        "рецепт": "recipes",
-        "groups": "groups",
-        "group": "groups",
-        "группа": "groups",
-        "storages": "storages",
-        "storage": "storages",
-        "склад": "storages",
-        "organizations": "organizations",
-        "organization": "organizations",
-        "организация": "organizations",
-    }
-
-    def is_valid_type(self, entity_type: str) -> bool:
-        # Проверка поддержки типа сущности
-        norm_type = str(entity_type).lower().strip()
-        return norm_type in self.__type_aliases
-
-    def get_by_code(self, entity_type: str, code: str) -> Optional[base_model]:
-        # Поиск сущности по типу коллекции и уникальному коду (или наименованию)
-        if not self._is_loaded:
-            self.start()
-
-        norm_type = str(entity_type).lower().strip()
-        key = self.__type_aliases.get(norm_type)
-        if not key or key not in self.__data:
-            return None
-
-        c = str(code).strip().lower()
-        for item in self.__data[key]:
-            if str(item.unique_code).lower() == c or str(item.id).lower() == c or str(item.name).strip().lower() == c:
-                return item
-
-        return None
-
-    def get_entity(self, entity_type: str, entity_code: str):
-        # Поиск сущности по типу и уникальному коду или наименованию для REST API
-        if not self._is_loaded:
-            self.start()
-
-        norm_type = str(entity_type).lower().strip()
-        key = self.__type_aliases.get(norm_type)
-        if not key or key not in self.__data:
-            return None, f"Неподдерживаемый тип сущности: {entity_type}", 400
-
-        c = str(entity_code).strip()
-        for item in self.__data[key]:
-            if (
-                str(item.id).lower() == c.lower()
-                or str(item.unique_code).lower() == c.lower()
-                or item.name.lower() == c.lower()
-            ):
-                return item, None, 200
-
-        return None, f"Сущность типа '{entity_type}' с кодом '{entity_code}' не найдена.", 404
-
-    def get_dependencies(self, entity: base_model) -> list:
-        # Поиск всех доменных сущностей в хранилище, которые ссылаются на данную сущность
-        if not isinstance(entity, base_model):
-            return []
-
-        dependencies = []
-        target_id = entity.id
-
-        # 1. Проверяем единицы измерения (ranges) - на них могут ссылаться другие ranges (base_range)
-        for r in self.__data.get("ranges", []):
-            if r is not entity and r.base_range is not None and r.base_range.id == target_id:
-                dependencies.append(r)
-
-        # 2. Проверяем номенклатуру (nomenclatures) - ссылается на groups и ranges
-        for nom in self.__data.get("nomenclatures", []):
-            if nom is not entity:
-                if nom.group is not None and nom.group.id == target_id:
-                    dependencies.append(nom)
-                if nom.range is not None and nom.range.id == target_id:
-                    dependencies.append(nom)
-
-        # 3. Проверяем рецепты (recipes) - ссылаются на nomenclature (dish) и в строках на nomenclature и nested_recipe
-        for rec in self.__data.get("recipes", []):
-            if rec is not entity:
-                if rec.dish is not None and rec.dish.id == target_id:
-                    dependencies.append(rec)
-                for row in rec.rows:
-                    if row.nomenclature is not None and row.nomenclature.id == target_id:
-                        dependencies.append(rec)
-                    if row.nested_recipe is not None and row.nested_recipe.id == target_id:
-                        dependencies.append(rec)
-
-        return dependencies
-
-    def delete_entity(self, key_or_type: str, code_or_id: str) -> None:
-        # Удаление сущности с предварительной проверкой целостности и связей
-        entity, err_msg, status_code = self.get_entity(key_or_type, code_or_id)
-        if err_msg or entity is None:
-            raise operation_exception(f"Сущность не найдена: {err_msg}")
-
-        norm_type = str(key_or_type).lower().strip()
-        key = self.__type_aliases.get(norm_type)
-        if not key or key not in self.__data:
-            raise operation_exception(f"Неподдерживаемый тип сущности: {key_or_type}")
-
-        # Проверка связности: запрещено удалять сущность, если на нее ссылаются другие объекты
-        deps = self.get_dependencies(entity)
-        if deps:
-            dep_names = ", ".join(f"'{d.name}' ({d.type})" for d in deps)
-            raise operation_exception(
-                f"Невозможно удалить сущность '{entity.name}' ({entity.type}), так как на нее ссылаются: {dep_names}."
-            )
-
+    def remove_entity(self, key: str, entity: base_model) -> None:
+        # Удаление элемента из указанной коллекции хранилища
+        if key not in self.__allowed_types:
+            raise argument_exception("key", f"Неизвестная коллекция данных: {key}")
+        if entity not in self.__data[key]:
+            raise operation_exception(f"Элемент '{entity.name}' отсутствует в коллекции '{key}'.")
         self.__data[key].remove(entity)
 
-    def update_entity(self, key_or_type: str, code_or_id: str, new_entity: base_model) -> None:
-        # Обновление сущности с контролем целостности, связей и неизменности уникального кода
-        entity, err_msg, status_code = self.get_entity(key_or_type, code_or_id)
-        if err_msg or entity is None:
-            raise operation_exception(f"Сущность не найдена: {err_msg}")
+    def replace_entity(self, key: str, old_entity: base_model, new_entity: base_model) -> None:
+        # Замена существующего элемента в коллекции с проверкой бизнес-уникальности
+        if key not in self.__allowed_types:
+            raise argument_exception("key", f"Неизвестная коллекция данных: {key}")
 
-        norm_type = str(key_or_type).lower().strip()
-        key = self.__type_aliases.get(norm_type)
-        if not key or key not in self.__data:
-            raise operation_exception(f"Неподдерживаемый тип сущности: {key_or_type}")
-
-        expected_type = self.__allowed_types[key]
-        if not isinstance(new_entity, expected_type):
-            raise argument_exception(
-                "new_entity",
-                f"Новый объект должен иметь тип {expected_type.__name__}, получен {type(new_entity).__name__}."
-            )
-
-        deps = self.get_dependencies(entity)
-        # Если сущность связана с другими, запрещено менять её уникальный код (id)
-        if new_entity.id != entity.id:
-            if deps:
-                dep_names = ", ".join(f"'{d.name}' ({d.type})" for d in deps)
-                raise operation_exception(
-                    f"Запрещено изменять код (id) сущности '{entity.name}', так как она связана с: {dep_names}."
-                )
-
-        # Проверка уникальности имени среди остальных объектов коллекции
         for item in self.__data[key]:
-            if item is not entity:
+            if item is not old_entity:
                 if item.name.strip().lower() == new_entity.name.strip().lower():
                     raise operation_exception(
                         f"Элемент с наименованием '{new_entity.name}' уже существует в коллекции '{key}'."
@@ -321,24 +186,45 @@ class storage_manager(abstract_manager):
                         f"Элемент с идентификатором '{new_entity.id}' уже существует в коллекции '{key}'."
                     )
 
-        # Замена элемента в коллекции
-        idx = self.__data[key].index(entity)
+        idx = self.__data[key].index(old_entity)
         self.__data[key][idx] = new_entity
 
-        # Обновление ссылок в зависимых объектах для сохранения консистентности графа объектов
-        for r in self.__data.get("ranges", []):
-            if r.base_range is not None and r.base_range.id == new_entity.id:
-                r.base_range = new_entity
-        for nom in self.__data.get("nomenclatures", []):
-            if nom.group is not None and nom.group.id == new_entity.id:
-                nom.group = new_entity
-            if nom.range is not None and nom.range.id == new_entity.id:
-                nom.range = new_entity
-        for rec in self.__data.get("recipes", []):
-            if rec.dish is not None and rec.dish.id == new_entity.id:
-                rec.dish = new_entity
-            for row in rec.rows:
-                if row.nomenclature is not None and row.nomenclature.id == new_entity.id:
-                    row.nomenclature = new_entity
-                if row.nested_recipe is not None and row.nested_recipe.id == new_entity.id:
-                    row.nested_recipe = new_entity
+    def resolve_key(self, entity_type: str) -> Optional[str]:
+        # Определение ключа коллекции по имени типа или класса модели из реестра __allowed_types
+        if not isinstance(entity_type, str):
+            return None
+        norm = entity_type.strip().lower()
+        if norm in self.__allowed_types:
+            return norm
+        if f"{norm}s" in self.__allowed_types:
+            return f"{norm}s"
+        for key, model_cls in self.__allowed_types.items():
+            cls_name = model_cls.__name__.lower()
+            if norm in (cls_name, cls_name.replace("_model", "")):
+                return key
+        return None
+
+    def get_model_type(self, entity_type: str):
+        # Получение класса модели по имени коллекции или типа из реестра __allowed_types
+        key = self.resolve_key(entity_type)
+        return self.__allowed_types.get(key) if key else None
+
+    def is_valid_type(self, entity_type: str) -> bool:
+        # Проверка поддержки типа сущности через реестр __allowed_types
+        return self.resolve_key(entity_type) is not None
+
+    def get_by_code(self, entity_type: str, code: str) -> Optional[base_model]:
+        # Поиск сущности по типу коллекции и уникальному коду (или наименованию)
+        if not self._is_loaded:
+            self.start()
+
+        key = self.resolve_key(entity_type)
+        if not key or key not in self.__data:
+            return None
+
+        c = str(code).strip().lower()
+        for item in self.__data[key]:
+            if str(item.unique_code).lower() == c or str(item.id).lower() == c or str(item.name).strip().lower() == c:
+                return item
+
+        return None

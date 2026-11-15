@@ -4,7 +4,6 @@ from typing import Optional
 from Src.Core.abstract_manager import abstract_manager
 from Src.Core.exceptions import argument_exception, operation_exception
 from Src.Logics.deserialize_factory import deserialize_factory
-from Src.Models.organization_model import organization_model
 from Src.Models.settings_model import settings_model
 
 
@@ -72,57 +71,15 @@ class settings_manager(abstract_manager):
         if not file_name.strip():
             raise argument_exception("file_name", "Имя файла не может быть пустым.")
 
-    __default_data: dict = {
-        "name": "ООО Ромашка",
-        "inn": "7701234567",
-        "bic": "044525225",
-        "account": "40702810938000012345",
-        "ownership_form": "ООО",
-        "is_first_start": True,
-        "response_format": "TXT",
-    }
-
     def convert(self, data: dict) -> None:
-        # Преобразование словаря в модель settings_model с безопасной подстановкой значений по умолчанию
+        # Десериализация словаря настроек в модель settings_model через фабрику
         if not isinstance(data, dict):
             raise argument_exception(
                 "data", "Данные настроек должны передаваться в виде словаря (dict)."
             )
 
-        is_first_start = data.get("is_first_start", self.__default_data["is_first_start"])
-        if not isinstance(is_first_start, bool):
-            raise argument_exception(
-                "is_first_start", "Флаг первого запуска должен быть типа bool."
-            )
-
-        name = data.get("name", self.__default_data["name"])
-        inn = data.get("inn", self.__default_data["inn"])
-        bic = data.get("bic", self.__default_data["bic"])
-        account = data.get("account", self.__default_data["account"])
-        ownership_form = data.get("ownership_form", self.__default_data["ownership_form"])
-        response_format = data.get("response_format", self.__default_data["response_format"])
-
-        # Общий механизм десериализации данных для создания модели организации
         factory = deserialize_factory()
-        org_data = data.get("organization")
-        if isinstance(org_data, dict):
-            org = factory.deserialize(org_data, target_type=organization_model)
-        else:
-            org_fields = {
-                "name": name,
-                "inn": inn,
-                "bic": bic,
-                "account": account,
-                "ownership_form": ownership_form,
-            }
-            org = factory.deserialize(org_fields, target_type=organization_model)
-
-        model = settings_model()
-        model.organization = org
-        model.is_first_start = is_first_start
-        model.response_format = response_format
-
-        self.__settings = model
+        self.__settings = factory.deserialize(data, target_type=settings_model)
         self._is_loaded = True
 
     @property
