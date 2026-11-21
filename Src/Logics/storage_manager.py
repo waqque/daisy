@@ -8,9 +8,9 @@ from Src.Models.nomenclature_model import nomenclature_model
 from Src.Models.organization_model import organization_model
 from Src.Models.range_model import range_model
 from Src.Models.recipe_model import recipe_model
-from Src.Models.recipe_row_model import recipe_row_model
 from Src.Models.settings_model import settings_model
 from Src.Models.storage_model import storage_model
+from Src.Models.transaction_model import transaction_model
 
 
 class storage_manager(abstract_manager):
@@ -23,38 +23,46 @@ class storage_manager(abstract_manager):
         "storages": storage_model,
         "organizations": organization_model,
         "recipes": recipe_model,
+        "transactions": transaction_model,
     }
 
+    @staticmethod
+    def transaction_key() -> str:
+        # Ключ коллекции складских транзакций
+        return "transactions"
+
     def __new__(cls):
-        # Обеспечение единственного экземпляра класса (Singleton)
+        # Хранилище работает как синглтон
         if not hasattr(cls, "instance"):
             cls.instance = super(storage_manager, cls).__new__(cls)
             cls.instance.__init_state()
         return cls.instance
 
+    def __init__(self) -> None:
+        # Не сбрасываем состояние повторно при каждом вызове storage_manager()
+        pass
+
     def __init_state(self) -> None:
-        # Инициализация состояния экземпляра
         super().__init__()
-        self.__data: dict = {
-            "ranges": [],
-            "groups": [],
-            "nomenclatures": [],
-            "storages": [],
-            "organizations": [],
-            "recipes": [],
-        }
+        self._version: int = 0
+        self.__data: dict = {key: [] for key in self.__allowed_types}
+
+    @property
+    def version(self) -> int:
+        # Счетчик изменений хранилища, по которому сервис понимает, когда перестроить индексы
+        return self._version
 
     def clear(self) -> None:
-        # Очистка всех списков репозитория
-        self.__data = {
-            "ranges": [],
-            "groups": [],
-            "nomenclatures": [],
-            "storages": [],
-            "organizations": [],
-            "recipes": [],
-        }
+        # Очищаем все коллекции и сбрасываем флаг загрузки
+        self.__data = {key: [] for key in self.__allowed_types}
         self._is_loaded = False
+        self._version += 1
+
+    def build(self) -> bool:
+        # Запускаем наполнение, если данные еще не загружены
+        if not self._is_loaded:
+            self.start()
+        return True
 
     def start(self, settings: Optional[settings_model] = None) -> None:
         # Явный запуск хранилища с передачей или загрузкой настроек
@@ -70,7 +78,7 @@ class storage_manager(abstract_manager):
             self._is_loaded = True
 
     def add_entity(self, key: str, entity: base_model) -> None:
-        # Добавление элемента с проверкой типа коллекции и бизнес-уникальности по наименованию
+        # Добавление элемента с проверкой типа коллекции и бизнес-уникальности
         if key not in self.__allowed_types:
             raise argument_exception("key", f"Неизвестная коллекция данных: {key}")
 
@@ -89,14 +97,21 @@ class storage_manager(abstract_manager):
                         f"Технологическая карта для блюда '{entity.dish.name}' уже существует."
                     )
 
-        # Проверка бизнес-уникальности по наименованию и по уникальному коду
-        for item in self.__data[key]:
-            if item.unique_code == entity.unique_code or item.name.strip().lower() == entity.name.strip().lower():
-                raise operation_exception(
-                    f"Элемент с наименованием '{entity.name}' уже существует в коллекции '{key}'."
-                )
+        if key == self.transaction_key():
+            for item in self.__data[key]:
+                if item.unique_code == entity.unique_code or item.id == entity.id:
+                    raise operation_exception(
+                        f"Транзакция с кодом '{entity.unique_code}' уже существует в хранилище."
+                    )
+        else:
+            for item in self.__data[key]:
+                if item.unique_code == entity.unique_code or item.name.strip().lower() == entity.name.strip().lower():
+                    raise operation_exception(
+                        f"Элемент с наименованием '{entity.name}' уже существует в коллекции '{key}'."
+                    )
 
         self.__data[key].append(entity)
+        self._version += 1
 
     def convert(self, data: dict) -> None:
         # Заполнение хранилища из словаря доменных сущностей
@@ -162,6 +177,15 @@ class storage_manager(abstract_manager):
         # Копия списка технологических карт (рецептов)
         return list(self.__data["recipes"])
 
+    @property
+    def transactions(self) -> list:
+        return list(self.__data[self.transaction_key()])
+
+    @property
+    def allowed_types(self) -> dict:
+        # Копия реестра поддерживаемых типов коллекций и моделей
+        return dict(self.__allowed_types)
+
     def remove_entity(self, key: str, entity: base_model) -> None:
         # Удаление элемента из указанной коллекции хранилища
         if key not in self.__allowed_types:
@@ -169,62 +193,12 @@ class storage_manager(abstract_manager):
         if entity not in self.__data[key]:
             raise operation_exception(f"Элемент '{entity.name}' отсутствует в коллекции '{key}'.")
         self.__data[key].remove(entity)
+        self._version += 1
 
     def replace_entity(self, key: str, old_entity: base_model, new_entity: base_model) -> None:
-        # Замена существующего элемента в коллекции с проверкой бизнес-уникальности
+        # Замена существующего элемента в коллекции
         if key not in self.__allowed_types:
             raise argument_exception("key", f"Неизвестная коллекция данных: {key}")
-
-        for item in self.__data[key]:
-            if item is not old_entity:
-                if item.name.strip().lower() == new_entity.name.strip().lower():
-                    raise operation_exception(
-                        f"Элемент с наименованием '{new_entity.name}' уже существует в коллекции '{key}'."
-                    )
-                if item.id == new_entity.id:
-                    raise operation_exception(
-                        f"Элемент с идентификатором '{new_entity.id}' уже существует в коллекции '{key}'."
-                    )
-
         idx = self.__data[key].index(old_entity)
         self.__data[key][idx] = new_entity
-
-    def resolve_key(self, entity_type: str) -> Optional[str]:
-        # Определение ключа коллекции по имени типа или класса модели из реестра __allowed_types
-        if not isinstance(entity_type, str):
-            return None
-        norm = entity_type.strip().lower()
-        if norm in self.__allowed_types:
-            return norm
-        if f"{norm}s" in self.__allowed_types:
-            return f"{norm}s"
-        for key, model_cls in self.__allowed_types.items():
-            cls_name = model_cls.__name__.lower()
-            if norm in (cls_name, cls_name.replace("_model", "")):
-                return key
-        return None
-
-    def get_model_type(self, entity_type: str):
-        # Получение класса модели по имени коллекции или типа из реестра __allowed_types
-        key = self.resolve_key(entity_type)
-        return self.__allowed_types.get(key) if key else None
-
-    def is_valid_type(self, entity_type: str) -> bool:
-        # Проверка поддержки типа сущности через реестр __allowed_types
-        return self.resolve_key(entity_type) is not None
-
-    def get_by_code(self, entity_type: str, code: str) -> Optional[base_model]:
-        # Поиск сущности по типу коллекции и уникальному коду (или наименованию)
-        if not self._is_loaded:
-            self.start()
-
-        key = self.resolve_key(entity_type)
-        if not key or key not in self.__data:
-            return None
-
-        c = str(code).strip().lower()
-        for item in self.__data[key]:
-            if str(item.unique_code).lower() == c or str(item.id).lower() == c or str(item.name).strip().lower() == c:
-                return item
-
-        return None
+        self._version += 1

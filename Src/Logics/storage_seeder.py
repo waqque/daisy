@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional
 from Src.Logics.settings_manager import settings_manager
 from Src.Models.nomenclature_group_model import nomenclature_group_model
@@ -8,6 +9,7 @@ from Src.Models.recipe_model import recipe_model
 from Src.Models.recipe_row_model import recipe_row_model
 from Src.Models.settings_model import settings_model
 from Src.Models.storage_model import storage_model
+from Src.Models.transaction_model import transaction_model
 
 
 class storage_seeder:
@@ -89,5 +91,17 @@ class storage_seeder:
             rows=[row_milk, row_flour, row_egg, row_sugar, row_salt, row_oil, row_box],
         )
         storage.add_entity("recipes", pancakes_recipe)
+
+        # Складские транзакции
+        tx_key = storage.transaction_key()
+        t1 = transaction_model.create(main_storage, sugar, kg_unit, 100.0, datetime.datetime(2026, 11, 10, 10, 0))
+        t2 = transaction_model.create(main_storage, sugar, kg_unit, -25.0, datetime.datetime(2026, 11, 12, 12, 0))
+        t3 = transaction_model.create(main_storage, flour, g_unit, 200.0, datetime.datetime(2026, 11, 10, 11, 0))
+        t4 = transaction_model.create(main_storage, flour, g_unit, -50.0, datetime.datetime(2026, 11, 13, 15, 0))
+        t5 = transaction_model.create(cold_storage, egg, pcs_unit, 150.0, datetime.datetime(2026, 11, 11, 9, 0))
+        t6 = transaction_model.create(cold_storage, egg, pcs_unit, -30.0, datetime.datetime(2026, 11, 14, 14, 0))
+        t7 = transaction_model.create(cold_storage, milk, g_unit, 80.0, datetime.datetime(2026, 11, 11, 9, 30))
+        for tx in (t1, t2, t3, t4, t5, t6, t7):
+            storage.add_entity(tx_key, tx)
 
         storage._is_loaded = True

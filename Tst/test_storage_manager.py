@@ -347,29 +347,32 @@ def test_storage_manager_one_dish_one_recipe_rule_raises_exception():
         manager.add_entity("recipes", second_recipe)
 
 
-# 19. Проверка поиска сущности по коду и наименованию через get_by_code
+# 19. Проверка поиска сущности по коду и наименованию через storage_service.get_by_code
 def test_storage_manager_get_by_code_and_name_success():
+    from Src.Logics.storage_service import storage_service
+
     # Подготовка
     manager = storage_manager()
     manager.init_data()
+    service = storage_service(manager)
     recipe = manager.recipes[0]
 
     # Действие и проверка: поиск по коду
-    found_by_code = manager.get_by_code("recipe", recipe.unique_code)
+    found_by_code = service.get_by_code("recipe", recipe.unique_code)
     assert found_by_code is not None
     assert found_by_code.unique_code == recipe.unique_code
 
     # Поиск по наименованию
-    found_by_name = manager.get_by_code("recipes", recipe.name)
+    found_by_name = service.get_by_code("recipes", recipe.name)
     assert found_by_name is not None
     assert found_by_name.name == recipe.name
 
     # Несуществующая сущность и неподдерживаемый тип
-    assert manager.get_by_code("recipe", "unknown_123") is None
-    assert manager.get_by_code("invalid_type", "123") is None
-    assert manager.is_valid_type("recipe") is True
-    assert manager.is_valid_type("nomenclature_model") is True
-    assert manager.is_valid_type("invalid_type") is False
+    assert service.get_by_code("recipe", "unknown_123") is None
+    assert service.get_by_code("invalid_type", "123") is None
+    assert service.is_valid_type("recipe") is True
+    assert service.is_valid_type("nomenclature_model") is True
+    assert service.is_valid_type("invalid_type") is False
 
 
 # 20. Проверка метода load для соответствия LSP контракту abstract_manager

@@ -1,114 +1,200 @@
-from typing import Optional, Union
+from typing import Dict, Optional, Set, Tuple, Type, Union
 from Src.Core.abstract_model import base_model
 from Src.Core.exceptions import argument_exception, operation_exception
+from Src.Dtos.filter_dto import filter_dto
 from Src.Logics.deserialize_factory import deserialize_factory
+from Src.Logics.osv_service import osv_service
+from Src.Logics.prototype import prototype
 from Src.Logics.storage_manager import storage_manager
-from Src.Models.nomenclature_group_model import nomenclature_group_model
-from Src.Models.nomenclature_model import nomenclature_model
-from Src.Models.range_model import range_model
-from Src.Models.recipe_model import recipe_model
 
 
 class storage_service:
-    # Сервис управления доменными сущностями в хранилище (CRUD и контроль ссылочной целостности, SRP)
+    # Сервис CRUD-операций, фильтрации и контроля ссылочной целостности
     __storage: storage_manager
+    __id_index: Dict[Tuple[str, str], base_model]
+    __reverse_dependency_index: Dict[str, Set[base_model]]
+    _storage_version: int
 
     def __init__(self, storage: Optional[storage_manager] = None) -> None:
-        # Инициализация сервиса с привязкой к экземпляру хранилища
         self.__storage = storage if storage is not None else storage_manager()
+        self.__id_index = {}
+        self.__reverse_dependency_index = {}
+        self._storage_version = -1
 
     @property
     def storage(self) -> storage_manager:
-        # Доступ к обслуживаемому хранилищу
         return self.__storage
 
     def _ensure_loaded(self) -> None:
-        # Гарантия первичной инициализации хранилища перед выполнением операций
+        # Если данные еще не загружены или версия хранилища сменилась, обновляем индексы
         if not self.__storage.is_loaded:
             self.__storage.start()
+        current_version = getattr(self.__storage, "version", 0)
+        if self._storage_version != current_version:
+            self._build_indexes()
+
+    def _build_indexes(self) -> None:
+        # Перестраиваем словари быстрого поиска и обратных ссылок
+        self.__id_index = {}
+        self.__reverse_dependency_index = {}
+
+        for key, items in self.__storage.data.items():
+            for item in items:
+                self._index_entity(item, key)
+
+        self._storage_version = getattr(self.__storage, "version", 0)
+
+    @classmethod
+    def _extract_references(cls, source: object, visited_ids: Optional[Set[int]] = None) -> Set[str]:
+        # Находим id всех моделей, на которые ссылается объект
+        if visited_ids is None:
+            visited_ids = set()
+        obj_id = id(source)
+        if obj_id in visited_ids:
+            return set()
+        visited_ids.add(obj_id)
+
+        ref_ids: Set[str] = set()
+        if not hasattr(source, "__dict__"):
+            return ref_ids
+
+        for val in vars(source).values():
+            if isinstance(val, base_model):
+                ref_ids.add(val.id)
+                ref_ids.update(cls._extract_references(val, visited_ids))
+            elif isinstance(val, (list, tuple, set)):
+                for elem in val:
+                    if isinstance(elem, base_model):
+                        ref_ids.add(elem.id)
+                    ref_ids.update(cls._extract_references(elem, visited_ids))
+        return ref_ids
+
+    def _index_entity(self, entity: base_model, key: str) -> None:
+        # Добавляем сущность в индекс поиска и записываем, на кого она ссылается
+        c_id = str(entity.id).strip().lower()
+        c_code = str(entity.unique_code).strip().lower()
+
+        self.__id_index[(key, c_id)] = entity
+        self.__id_index[(key, c_code)] = entity
+        # У транзакций имена могут совпадать, поэтому по имени их не индексируем
+        if key != self.__storage.transaction_key():
+            c_name = str(entity.name).strip().lower()
+            self.__id_index[(key, c_name)] = entity
+
+        ref_ids = self._extract_references(entity)
+        for ref_id in ref_ids:
+            if ref_id != entity.id:
+                if ref_id not in self.__reverse_dependency_index:
+                    self.__reverse_dependency_index[ref_id] = set()
+                self.__reverse_dependency_index[ref_id].add(entity)
+
+    def _unindex_entity(self, entity: base_model, key: str) -> None:
+        # Убираем удаленную сущность из индексов
+        c_id = str(entity.id).strip().lower()
+        c_code = str(entity.unique_code).strip().lower()
+
+        self.__id_index.pop((key, c_id), None)
+        self.__id_index.pop((key, c_code), None)
+        if key != self.__storage.transaction_key():
+            c_name = str(entity.name).strip().lower()
+            self.__id_index.pop((key, c_name), None)
+
+        ref_ids = self._extract_references(entity)
+        for ref_id in ref_ids:
+            if ref_id in self.__reverse_dependency_index:
+                self.__reverse_dependency_index[ref_id].discard(entity)
+                if not self.__reverse_dependency_index[ref_id]:
+                    del self.__reverse_dependency_index[ref_id]
+
+        self.__reverse_dependency_index.pop(entity.id, None)
+
+    def resolve_key(self, entity_type: str) -> Optional[str]:
+        # Определяем ключ коллекции в хранилище по имени типа или класса модели
+        if not isinstance(entity_type, str):
+            return None
+        allowed = self.__storage.allowed_types
+        norm = entity_type.strip().lower()
+        if norm in allowed:
+            return norm
+        if f"{norm}s" in allowed:
+            return f"{norm}s"
+        for key, model_cls in allowed.items():
+            cls_name = model_cls.__name__.lower()
+            if norm in (cls_name, cls_name.replace("_model", "")):
+                return key
+        return None
+
+    def get_model_type(self, entity_type: str) -> Optional[Type[base_model]]:
+        key = self.resolve_key(entity_type)
+        return self.__storage.allowed_types.get(key) if key else None
+
+    def is_valid_type(self, entity_type: str) -> bool:
+        return self.resolve_key(entity_type) is not None
+
+    def get_by_code(self, entity_type: str, code: str) -> Optional[base_model]:
+        self._ensure_loaded()
+        key = self.resolve_key(entity_type)
+        if not key:
+            return None
+
+        c = str(code).strip().lower()
+        return self.__id_index.get((key, c))
 
     def get_list(self, entity_type: str) -> list:
-        # Получение списка всех сущностей указанного типа
         self._ensure_loaded()
-        key = self.__storage.resolve_key(entity_type)
+        key = self.resolve_key(entity_type)
         if not key:
             raise argument_exception("entity_type", f"Неподдерживаемый тип сущности: {entity_type}")
         return self.__storage.data.get(key, [])
 
     def get_entity(self, entity_type: str, entity_code: str):
-        # Поиск сущности по типу и уникальному коду или наименованию
         self._ensure_loaded()
-        key = self.__storage.resolve_key(entity_type)
+        key = self.resolve_key(entity_type)
         if not key:
             return None, f"Неподдерживаемый тип сущности: {entity_type}", 400
 
-        entity = self.__storage.get_by_code(key, entity_code)
+        entity = self.get_by_code(key, entity_code)
         if entity is not None:
             return entity, None, 200
 
         return None, f"Сущность типа '{entity_type}' с кодом '{entity_code}' не найдена.", 404
 
-    def create_entity(self, entity_type: str, data: dict) -> base_model:
-        # Десериализация и добавление новой сущности в хранилище
+    def get_default_recipe(self, recipe_name: Optional[str] = None) -> Optional[base_model]:
         self._ensure_loaded()
-        key = self.__storage.resolve_key(entity_type)
-        model_cls = self.__storage.get_model_type(entity_type)
+        if recipe_name:
+            found = self.get_by_code("recipes", recipe_name)
+            if found is not None:
+                return found
+        recipes = self.__storage.recipes
+        return recipes[0] if recipes else None
+
+    def create_entity(self, entity_type: str, data: dict) -> base_model:
+        self._ensure_loaded()
+        key = self.resolve_key(entity_type)
+        model_cls = self.get_model_type(entity_type)
         if not key or model_cls is None:
             raise argument_exception("entity_type", f"Неподдерживаемый тип сущности: {entity_type}")
 
         factory = deserialize_factory()
         entity = factory.deserialize(data, target_type=model_cls)
         self.__storage.add_entity(key, entity)
+        self._index_entity(entity, key)
+        self._storage_version = getattr(self.__storage, "version", 0)
         return entity
 
-    @staticmethod
-    def _is_recipe_dependent(recipe: recipe_model, target_id: str) -> bool:
-        # Проверка зависимости рецепта или его строк от целевого идентификатора
-        if recipe.dish is not None and recipe.dish.id == target_id:
-            return True
-        return any(
-            (row.nomenclature is not None and row.nomenclature.id == target_id)
-            or (row.nested_recipe is not None and row.nested_recipe.id == target_id)
-            for row in recipe.rows
-        )
-
     def get_dependencies(self, entity: base_model) -> list:
-        # Поиск всех доменных сущностей в хранилище, которые ссылаются на данную сущность
+        self._ensure_loaded()
         if not isinstance(entity, base_model):
             return []
-
-        target_id = entity.id
-        dependencies = []
-
-        if isinstance(entity, range_model):
-            dependencies.extend(
-                r for r in self.__storage.ranges
-                if r is not entity and r.base_range is not None and r.base_range.id == target_id
-            )
-            dependencies.extend(
-                nom for nom in self.__storage.nomenclatures
-                if nom.range is not None and nom.range.id == target_id
-            )
-        elif isinstance(entity, nomenclature_group_model):
-            dependencies.extend(
-                nom for nom in self.__storage.nomenclatures
-                if nom.group is not None and nom.group.id == target_id
-            )
-        elif isinstance(entity, (nomenclature_model, recipe_model)):
-            dependencies.extend(
-                rec for rec in self.__storage.recipes
-                if rec is not entity and self._is_recipe_dependent(rec, target_id)
-            )
-
-        return dependencies
+        deps = self.__reverse_dependency_index.get(entity.id, set())
+        return [item for item in deps if item is not entity]
 
     def delete_entity(self, key_or_type: str, code_or_id: str) -> None:
-        # Удаление сущности с предварительной проверкой целостности и связей
         entity, err_msg, _ = self.get_entity(key_or_type, code_or_id)
         if err_msg or entity is None:
             raise operation_exception(f"Сущность не найдена: {err_msg}")
 
-        key = self.__storage.resolve_key(key_or_type)
+        key = self.resolve_key(key_or_type)
         deps = self.get_dependencies(entity)
         if deps:
             dep_names = ", ".join(f"'{d.name}' ({d.type})" for d in deps)
@@ -117,35 +203,42 @@ class storage_service:
             )
 
         self.__storage.remove_entity(key, entity)
+        self._unindex_entity(entity, key)
+        self._storage_version = getattr(self.__storage, "version", 0)
 
-    @staticmethod
-    def _update_recipe_rows(rows: list, new_entity: base_model) -> None:
-        # Обновление ссылок на номенклатуру или вложенный рецепт в строках техкарты
-        for row in rows:
-            if row.nomenclature is not None and row.nomenclature.id == new_entity.id:
-                row.nomenclature = new_entity
-            if row.nested_recipe is not None and row.nested_recipe.id == new_entity.id:
-                row.nested_recipe = new_entity
+    @classmethod
+    def _replace_collection_references(cls, collection: Union[list, tuple, set], new_entity: base_model) -> None:
+        for elem in collection:
+            cls._replace_references_in_object(elem, new_entity)
 
-    def _update_single_dependency(self, dep: base_model, new_entity: base_model) -> None:
-        # Обновление ссылки в одном зависимом объекте
-        if isinstance(dep, range_model):
-            if dep.base_range is not None and dep.base_range.id == new_entity.id:
-                dep.base_range = new_entity
-        elif isinstance(dep, nomenclature_model):
-            if dep.group is not None and dep.group.id == new_entity.id:
-                dep.group = new_entity
-            if dep.range is not None and dep.range.id == new_entity.id:
-                dep.range = new_entity
-        elif isinstance(dep, recipe_model):
-            if dep.dish is not None and dep.dish.id == new_entity.id:
-                dep.dish = new_entity
-            self._update_recipe_rows(dep.rows, new_entity)
+    @classmethod
+    def _replace_references_in_object(cls, source: object, new_entity: base_model) -> None:
+        # Обновление ссылок на измененную сущность в атрибутах объекта
+        if not hasattr(source, "__dict__"):
+            return
+
+        for attr_name, val in list(vars(source).items()):
+            if isinstance(val, base_model) and val.id == new_entity.id:
+                setattr(source, attr_name, new_entity)
+            elif isinstance(val, (list, tuple, set)):
+                cls._replace_collection_references(val, new_entity)
 
     def _update_references(self, dependencies: list, new_entity: base_model) -> None:
-        # Точечное обновление ссылок только в найденных зависимых объектах
         for dep in dependencies:
-            self._update_single_dependency(dep, new_entity)
+            self._replace_references_in_object(dep, new_entity)
+
+    def _validate_uniqueness(self, key: str, old_entity: base_model, new_entity: base_model) -> None:
+        check_name = key != self.__storage.transaction_key()
+        for item in self.__storage.data.get(key, []):
+            if item is not old_entity:
+                if check_name and item.name.strip().lower() == new_entity.name.strip().lower():
+                    raise operation_exception(
+                        f"Элемент с наименованием '{new_entity.name}' уже существует в коллекции '{key}'."
+                    )
+                if item.id == new_entity.id:
+                    raise operation_exception(
+                        f"Элемент с идентификатором '{new_entity.id}' уже существует в коллекции '{key}'."
+                    )
 
     def update_entity(
         self,
@@ -153,13 +246,12 @@ class storage_service:
         code_or_id: str,
         new_data_or_entity: Union[dict, base_model],
     ) -> base_model:
-        # Обновление сущности с контролем целостности, связей и неизменности уникального кода
         entity, err_msg, _ = self.get_entity(key_or_type, code_or_id)
         if err_msg or entity is None:
             raise operation_exception(f"Сущность не найдена: {err_msg}")
 
-        key = self.__storage.resolve_key(key_or_type)
-        expected_type = self.__storage.get_model_type(key)
+        key = self.resolve_key(key_or_type)
+        expected_type = self.get_model_type(key)
         if not key or expected_type is None:
             raise operation_exception(f"Неподдерживаемый тип сущности: {key_or_type}")
 
@@ -184,6 +276,22 @@ class storage_service:
                 f"Запрещено изменять код (id) сущности '{entity.name}', так как она связана с: {dep_names}."
             )
 
+        self._validate_uniqueness(key, entity, new_entity)
         self.__storage.replace_entity(key, entity, new_entity)
         self._update_references(deps, new_entity)
+        self._build_indexes()
         return new_entity
+
+    def filter_entities(self, entity_type: str, filter: Optional[filter_dto] = None) -> list:
+        # Фильтруем выбранную коллекцию через прототип
+        self._ensure_loaded()
+        items = self.get_list(entity_type)
+        proto = prototype(items)
+        if filter is not None:
+            return proto.clone(filter).data
+        return proto.data
+
+    def get_osv(self, filter: Optional[filter_dto] = None) -> list:
+        # Формируем ОСВ с учетом переданного фильтра
+        self._ensure_loaded()
+        return osv_service(self.__storage).build_osv(filter)
