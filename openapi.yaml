@@ -311,3 +311,90 @@ paths:
         '404':
           description: Сущность не найдена.
 
+  /api/filter/{domain_type}:
+    post:
+      summary: Фильтрация сущностей указанного типа с использованием шаблона Прототип
+      description: Фильтрует список доменных сущностей (номенклатура, группы, единицы измерения, рецепты) по DTO модели фильтрации.
+      operationId: main.filter_entities
+      parameters:
+        - name: domain_type
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Тип доменной модели (например, nomenclatures, groups, ranges, recipes).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilterDto'
+      responses:
+        '200':
+          description: Список отфильтрованных сущностей.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '400':
+          description: Неподдерживаемый тип сущности или ошибка фильтрации.
+
+  /api/reports/osv:
+    post:
+      summary: Получить оборотно-сальдовую ведомость (ОСВ) с учетом фильтрации через Прототип
+      description: Формирует ОСВ по складским транзакциям с фильтрацией через шаблон Прототип.
+      operationId: main.get_osv_report
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilterDto'
+      responses:
+        '200':
+          description: Сформированная оборотно-сальдовая ведомость.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '400':
+          description: Ошибка запроса.
+
+components:
+  schemas:
+    FilterItemDto:
+      type: object
+      properties:
+        field_name:
+          type: string
+        filter_type:
+          type: string
+          enum: [EQUALS, LIKE]
+        value:
+          type: string
+
+    FilterDto:
+      type: object
+      properties:
+        field_name:
+          type: string
+        filter_type:
+          type: string
+          enum: [EQUALS, LIKE]
+        value:
+          type: string
+        start_period:
+          type: string
+          format: date-time
+        end_period:
+          type: string
+          format: date-time
+        filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/FilterItemDto'
+

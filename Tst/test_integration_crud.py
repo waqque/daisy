@@ -118,7 +118,7 @@ def test_success_create_entity(client):
     assert "id" in created_item
 
     # Проверка сохранения в хранилище
-    stored_entity = storage.get_by_code("storages", created_item["id"])
+    stored_entity = service.get_by_code("storages", created_item["id"])
     assert stored_entity is not None
     assert stored_entity.name == "Новый буферный склад"
 
@@ -267,7 +267,7 @@ def test_success_delete_entity_when_not_referenced(client):
     assert response.status_code == 200
     assert response.get_json() == {"result": True}
     assert len(storage.storages) == initial_count - 1
-    assert storage.get_by_code("storages", temp_st.id) is None
+    assert service.get_by_code("storages", temp_st.id) is None
 
 
 # 15. Проверка ошибки 404 при удалении несуществующей сущности (DELETE)

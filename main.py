@@ -1,5 +1,8 @@
+import io
 import connexion
 import flask
+from Src.Dtos.filter_dto import filter_dto
+from Src.Dtos.report_result_dto import report_result_dto
 from Src.Dtos.report_type_dto import report_type_enum
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.report_factory import report_factory
@@ -13,15 +16,21 @@ storage = storage_manager()
 service = storage_service(storage)
 
 
-def create_response(report, result, filename: str = "report"):
-    # Формирование ответа RestApi делегированием полиморфному методу отчета
-    if hasattr(report, "create_response"):
-        return report.create_response(result, filename)
-    if hasattr(result, "create_response"):
-        return result.create_response(report, filename)
-    instance = report_factory().create(result if isinstance(result, report_type_enum) else report)
-    dto = report if not isinstance(result, report_type_enum) else result
-    return instance.create_response(dto, filename)
+def create_response(report, result: report_result_dto, filename: str = "report"):
+    # Формирование HTTP-ответа по отчету
+    if isinstance(report, report_type_enum):
+        report = report_factory().create(report)
+
+    if getattr(report, "as_attachment", False):
+        data_bytes = result.data if result.data else result.text.encode("utf-8")
+        ext = getattr(report, "file_extension", "txt")
+        return flask.send_file(
+            io.BytesIO(data_bytes),
+            mimetype=report.mimetype,
+            as_attachment=True,
+            download_name=f"{filename}.{ext}",
+        )
+    return flask.Response(result.text, mimetype=report.mimetype)
 
 
 @api.route("/", methods=["GET"])
@@ -38,23 +47,10 @@ def swagger():
 @api.route("/api/get_report", methods=["GET"])
 def get_report():
     # Формирование и получение текстового отчета по технологической карте
-    if not storage.is_loaded:
-        storage.start()
-
-    if len(storage.recipes) == 0:
+    recipe_name = flask.request.args.get("recipe") if flask.has_request_context() else None
+    recipe = service.get_default_recipe(recipe_name)
+    if recipe is None:
         return "Рецепты не найдены в хранилище.", 404
-
-    # Определение технологической карты (по умолчанию первая из хранилища)
-    recipe = storage.recipes[0]
-    if flask.has_request_context():
-        recipe_name = flask.request.args.get("recipe")
-        if recipe_name:
-            found_recipe = next(
-                (r for r in storage.recipes if r.name.lower() == recipe_name.lower()),
-                None,
-            )
-            if found_recipe:
-                recipe = found_recipe
 
     # Определение формата отчета (по умолчанию TXT)
     report_type = report_type_enum.TXT
@@ -68,7 +64,7 @@ def get_report():
 
     report = report_factory().create(report_type)
     result = report.build(recipe)
-    return report.create_response(result, filename=recipe.name)
+    return create_response(report, result, filename=recipe.name)
 
 
 # 5. Метод GET: формирование отчета в указанном формате для указанного типа и кода сущности
@@ -86,7 +82,7 @@ def get_report_by_format(entity_type: str, entity_code: str):
 
     report = report_factory().create(report_type)
     result = report.build(entity)
-    return report.create_response(result, filename=f"{entity_type}_{entity.name}")
+    return create_response(report, result, filename=f"{entity_type}_{entity.name}")
 
 
 # 8. Метод GET: формирование отчета для указанного типа и кода сущности с использованием create_default
@@ -99,7 +95,7 @@ def get_report_default(entity_type: str, entity_code: str):
     factory = report_factory()
     report = factory.create_default()
     result = report.build(entity)
-    return report.create_response(result, filename=f"{entity_type}_{entity.name}")
+    return create_response(report, result, filename=f"{entity_type}_{entity.name}")
 
 
 # 1. Получить список всех форматов для построения отчетов (GET \ Json)
@@ -120,11 +116,12 @@ def get_entities():
 # 3. CRUD: Получить список сущностей указанного типа (GET \ Json)
 @api.route("/api/entities/<entity_type>", methods=["GET"])
 def get_entities_by_type(entity_type: str):
-    if not storage.is_valid_type(entity_type):
+    if not service.is_valid_type(entity_type):
         return flask.jsonify({"error": f"Неподдерживаемый тип сущности: {entity_type}"}), 400
 
     items = service.get_list(entity_type)
-    converted = [convert_factory().convert(item) for item in items]
+    converter = convert_factory()
+    converted = [converter.convert(item) for item in items]
     return flask.jsonify(converted), 200
 
 
@@ -140,7 +137,7 @@ def get_entity_by_id(entity_type: str, entity_id: str):
 # 5. CRUD: Добавить доменную сущность (POST \ Json)
 @api.route("/api/entities/<entity_type>", methods=["POST"])
 def create_entity(entity_type: str):
-    if not storage.is_valid_type(entity_type):
+    if not service.is_valid_type(entity_type):
         return flask.jsonify({"error": f"Неподдерживаемый тип сущности: {entity_type}"}), 400
 
     data = flask.request.get_json(silent=True)
@@ -157,7 +154,7 @@ def create_entity(entity_type: str):
 # 6. CRUD: Обновить доменную сущность (PUT \ Json)
 @api.route("/api/entities/<entity_type>/<entity_id>", methods=["PUT"])
 def update_entity(entity_type: str, entity_id: str):
-    if not storage.is_valid_type(entity_type):
+    if not service.is_valid_type(entity_type):
         return flask.jsonify({"error": f"Неподдерживаемый тип сущности: {entity_type}"}), 400
 
     data = flask.request.get_json(silent=True)
@@ -177,7 +174,7 @@ def update_entity(entity_type: str, entity_id: str):
 # 7. CRUD: Удалить доменную сущность (DELETE \ Json)
 @api.route("/api/entities/<entity_type>/<entity_id>", methods=["DELETE"])
 def delete_entity(entity_type: str, entity_id: str):
-    if not storage.is_valid_type(entity_type):
+    if not service.is_valid_type(entity_type):
         return flask.jsonify({"error": f"Неподдерживаемый тип сущности: {entity_type}"}), 400
 
     try:
@@ -188,6 +185,39 @@ def delete_entity(entity_type: str, entity_id: str):
         if "не найдена" in err_text.lower():
             return flask.jsonify({"error": err_text}), 404
         return flask.jsonify({"error": err_text}), 400
+
+
+# Фильтрация доменных сущностей через прототип
+@api.route("/api/filter/<domain_type>", methods=["POST"])
+def filter_entities(domain_type: str, body: dict = None, **kwargs):
+    if not service.is_valid_type(domain_type):
+        return flask.jsonify({"error": f"Неподдерживаемый тип сущности: {domain_type}"}), 400
+
+    data = body if body is not None else flask.request.get_json(silent=True)
+
+    try:
+        dto = filter_dto.from_dict(data)
+        items = service.filter_entities(domain_type, dto)
+        converter = convert_factory()
+        converted = [converter.convert(item) for item in items]
+        return flask.jsonify(converted), 200
+    except Exception as exc:
+        return flask.jsonify({"error": str(exc)}), 400
+
+
+# Оборотно-сальдовая ведомость с фильтрацией через прототип
+@api.route("/api/reports/osv", methods=["POST"])
+def get_osv_report(body: dict = None, **kwargs):
+    data = body if body is not None else flask.request.get_json(silent=True)
+
+    try:
+        dto = filter_dto.from_dict(data)
+        rows = service.get_osv(dto)
+        converter = convert_factory()
+        converted = [converter.convert(row) for row in rows]
+        return flask.jsonify(converted), 200
+    except Exception as exc:
+        return flask.jsonify({"error": str(exc)}), 400
 
 
 # Подключение спецификации OpenAPI / Swagger UI

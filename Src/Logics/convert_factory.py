@@ -4,7 +4,9 @@ from Src.Core.abstract_convert_factory import abstract_convert_factory
 from Src.Core.abstract_convertor import abstract_convertor
 from Src.Logics.basic_convertor import basic_convertor
 from Src.Logics.datetime_convertor import datetime_convertor
+from Src.Logics.osv_convertor import osv_convertor
 from Src.Logics.reference_convertor import reference_convertor
+from Src.Models.osv_row_model import osv_row_model
 
 
 class convert_factory(abstract_convert_factory):
@@ -12,6 +14,7 @@ class convert_factory(abstract_convert_factory):
     _basic_convertor: basic_convertor
     _datetime_convertor: datetime_convertor
     _reference_convertor: reference_convertor
+    _osv_convertor: osv_convertor
     _mapping: Dict[Type, abstract_convertor]
 
     def __init__(self) -> None:
@@ -19,6 +22,7 @@ class convert_factory(abstract_convert_factory):
         self._basic_convertor = basic_convertor()
         self._datetime_convertor = datetime_convertor()
         self._reference_convertor = reference_convertor(factory=self)
+        self._osv_convertor = osv_convertor(factory=self)
 
         # Маппинг типов данных на соответствующие конверторы (по аналогии с report_factory)
         self._mapping = {
@@ -29,6 +33,7 @@ class convert_factory(abstract_convert_factory):
             datetime.datetime: self._datetime_convertor,
             datetime.date: self._datetime_convertor,
             datetime.time: self._datetime_convertor,
+            osv_row_model: self._osv_convertor,
         }
 
     @property
@@ -45,6 +50,11 @@ class convert_factory(abstract_convert_factory):
     def reference(self) -> reference_convertor:
         # Получение конвертора ссылочных типов
         return self._reference_convertor
+
+    @property
+    def osv(self) -> osv_convertor:
+        # Получение конвертора строк ОСВ
+        return self._osv_convertor
 
     def create(self, item_or_type: any) -> abstract_convertor:
         # Фабричный метод получения конвертора через словарь маппинга
